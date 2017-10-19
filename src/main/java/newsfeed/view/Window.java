@@ -1,8 +1,10 @@
-package edu.curtin.cs.filesearcher;
+package newsfeed.view;
 
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import newsfeed.controller.*;
+import newsfeed.model.*;
 
 public class Window extends JFrame
 {

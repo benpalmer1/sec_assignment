@@ -1,4 +1,4 @@
-package edu.curtin.cs.filesearcher;
+package newsfeed.controller;
 
 import java.io.*;
 import java.nio.file.*;
@@ -8,6 +8,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import newsfeed.view.*;
+import newsfeed.model.*;
 
 public class Controller
 {

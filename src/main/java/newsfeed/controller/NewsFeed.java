@@ -1,6 +1,8 @@
 package newsfeed.controller;
 
 import javax.swing.SwingUtilities;
+import newsfeed.view.*;
+import newsfeed.model.*;
 
 public class NewsFeed
 {
