@@ -9,9 +9,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
-public class FSController
+public class Controller
 {
-    private FSWindow window = null;
+    private Window window = null;
     
     private LinkedBlockingQueue<Path>   queue = new LinkedBlockingQueue<>(1000);
 //    private ArrayBlockingQueue<Path>    queue = new ArrayBlockingQueue<>(1000); 
@@ -19,12 +19,12 @@ public class FSController
     private ExecutorService executorService;
     private boolean running = true;
         
-    public FSController()
+    public Controller()
     {
         executorService = Executors.newFixedThreadPool(10);
     }
 
-    public void setWindow(FSWindow window)
+    public void setWindow(Window window)
     {
         this.window = window;
     }

@@ -4,12 +4,12 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 
-public class FSWindow extends JFrame
+public class Window extends JFrame
 {
     // A list-like container used to keep track of search results.
     private DefaultListModel<String> searchResults;
     
-    public FSWindow(final FSController controller)
+    public Window(final Controller controller)
     {
         super("File Searcher");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);

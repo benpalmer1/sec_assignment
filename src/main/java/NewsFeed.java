@@ -1,8 +1,8 @@
-package edu.curtin.cs.filesearcher;
+package newsfeed.controller;
 
 import javax.swing.SwingUtilities;
 
-public class FileSearcher
+public class NewsFeed
 {
     public static void main(String[] args)
     {
@@ -10,8 +10,8 @@ public class FileSearcher
         {
             @Override public void run()
             {            
-                FSController controller = new FSController();
-                FSWindow window = new FSWindow(controller);
+                Controller controller = new Controller();
+                Window window = new Window(controller);
                 controller.setWindow(window);
                 window.setVisible(true);
             }
