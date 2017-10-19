@@ -1,0 +1,4 @@
+#Java Compiled Files
+*.class
+*.jar
+*.MF
