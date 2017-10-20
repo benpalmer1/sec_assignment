@@ -26,6 +26,7 @@ public class Controller
 //    private SynchronousQueue<Path>      queue = new SynchronousQueue<>();
     private ExecutorService executorService;
     private boolean running = true;
+    private Timer timeTimer;
         
     public Controller()
     {
@@ -138,16 +139,19 @@ public class Controller
         window.setTime(dateFormat.format(initial.getTime()));
         
         // Start update timer
-        new Timer(1000, (ActionEvent e) ->
+        timeTimer = new Timer(1000, (ActionEvent e) ->
         {
             Calendar now = Calendar.getInstance();
             window.setTime(dateFormat.format(now.getTime()));
-        }).start(); // Update every minute.
+        });
+        
+        timeTimer.start();
     }
     
     public void stop()
     {
         running = false;
+        timeTimer.stop();
         executorService.shutdown();
     }
 }
