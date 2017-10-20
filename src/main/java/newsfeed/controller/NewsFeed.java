@@ -13,8 +13,8 @@ public class NewsFeed
         {
             @Override public void run()
             {            
-                WindowController controller = new WindowController();
-                Window window = new Window(controller);
+                NFWindowController controller = new NFWindowController();
+                NFWindow window = new NFWindow(controller);
                 controller.setWindow(window);
                 controller.startTimerThread();
                 window.setMinimumSize(new Dimension(800, 600));

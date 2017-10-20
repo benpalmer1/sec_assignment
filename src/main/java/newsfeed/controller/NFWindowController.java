@@ -18,10 +18,10 @@ import javax.swing.JOptionPane;
 import newsfeed.view.*;
 import newsfeed.model.*;
 
-public class WindowController
+public class NFWindowController
 {
     // Reference to the window
-    private Window window = null;
+    private NFWindow window = null;
     
     private LinkedBlockingQueue<Path>   queue = new LinkedBlockingQueue<>();
     private ExecutorService executorService;
@@ -30,13 +30,13 @@ public class WindowController
     private Timer timeTimer;
     private Logger logger;
         
-    public WindowController()
+    public NFWindowController()
     {
         initLogger();
         executorService = Executors.newFixedThreadPool(10);
     }
 
-    public void setWindow(Window window)
+    public void setWindow(NFWindow window)
     {
         this.window = window;
     }
@@ -59,6 +59,11 @@ public class WindowController
         timeTimer.start();
     }   
     
+    public NFWindow getWindow()
+    {
+        return this.window;
+    }
+    
     // Initialise the logger. All logging tasks are run in separate threads using the logException and logInfo handlers
     public void initLogger()
     {
@@ -76,7 +81,7 @@ public class WindowController
         }
     }
     
-    public void logExeception(String logString)
+    public void logException(String logString)
     {
         Runnable logTask = () -> { logger.severe(logString); };
         new Thread(logTask).start();

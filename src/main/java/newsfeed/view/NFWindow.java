@@ -9,16 +9,16 @@ import javax.swing.border.TitledBorder;
 import newsfeed.controller.*;
 import newsfeed.model.*;
 
-public class Window extends JFrame
+public class NFWindow extends JFrame
 {
     // A list-like container used to keep track of headlines.
     private DefaultListModel<String> headlines;
-    private WindowController controller;
+    private NFWindowController controller;
     private JButton updateButton;
     private JButton cancelLoadButton;
     private JLabel timeLabel;
     
-    public Window(final WindowController controller)
+    public NFWindow(final NFWindowController controller)
     {
         super("Newsfeed");
         // Listener for exit by the system default window close button.
@@ -111,5 +111,10 @@ public class Window extends JFrame
     public void showError(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    public void showInformation(String message)
+    {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.INFORMATION_MESSAGE);
     }
 }

@@ -7,26 +7,42 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import newsfeed.controller.WindowController;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import newsfeed.controller.NFWindowController;
 
 /**
  * @author Benjamin Nicholas Palmer
  * Student 17743075 - Curtin University
- * Implementable interface required to be extended for plug-in support.
+ * Implementable Plugin class required to be extended for plug-in support.
  */
 
 public abstract class Plugin
 {
     //Window controller reference
-    private WindowController windowController;
+    private NFWindowController windowController;
     private String pageText;
     
-    // Template methods required to be implemented in the plugin
-    public abstract ArrayList<String> getHeadlines(String pageText);   // Method to parse the page HTML
-    public abstract String getSource();
-    public abstract int getRefresh();
+    // Values initialised in the plugin constructor:
+    private String source;
+    private int refreshInterval;
     
-    public void commonLoadingMethod()
+    // Template method required to be implemented in the plugin
+    public abstract ArrayList<String> getHeadlines(String pageText);   // Method to parse the page HTML
+    
+    
+    
+    public String getSource()
+    {
+        return this.source;
+    }
+    
+    public int getRefreshInterval()
+    {
+        return this.refreshInterval;
+    }
+    
+    public void loadSource()
     {
         try
         {    
@@ -48,19 +64,44 @@ public abstract class Plugin
                pageText = new String(array, StandardCharsets.UTF_8);
             }
             catch(ClosedByInterruptException e) {   // Thread.interrupt()
-                
+                windowController.logInfo("Download of page cancelled.");
             }
             catch(IOException e) {  // An error
-                
+                windowController.logException("Error: Error downloading URL.");
+                windowController.getWindow().showError("Error: Error downloading URL.");
             }
         }
         catch(MalformedURLException e)  // Plugin has incorrect URL
         {
-            
+            windowController.logException("Error: Specified plugin URL of incorrect format.");
+            windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
         }
     }
     
-    public void setWindowController(WindowController controller)
+    /** Method to dynamically load a class file.
+     * Program will continue to run for plugins that cannot load properly however an error message will display.
+    */
+    public Plugin loadClassFile(String pluginName)
+    {
+        Plugin newPlugin = null;
+        try
+        {
+            Class newClass = Class.forName(pluginName);
+            newPlugin = (Plugin) newClass.newInstance();
+        } catch (ClassNotFoundException e)
+        {
+            windowController.logException("Error: Plugin class not found.");
+            windowController.getWindow().showError("Error: Plugin class not found.");
+        } catch(InstantiationException | IllegalAccessException | ClassCastException e)
+        {
+            windowController.logException("Error: Cannot instantiate plugin class.");
+            windowController.getWindow().showError("EError: Cannot instantiate plugin class.");
+        }
+        
+        return newPlugin;
+    }
+    
+    public void setWindowController(NFWindowController controller)
     {
         this.windowController = controller;
     }
