@@ -2,3 +2,7 @@
 *.class
 *.jar
 *.MF
+
+#Gradle Files
+/.nb-gradle/
+.gradle/

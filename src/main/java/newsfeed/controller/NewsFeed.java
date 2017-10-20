@@ -1,5 +1,6 @@
 package newsfeed.controller;
 
+import java.awt.Dimension;
 import javax.swing.SwingUtilities;
 import newsfeed.view.*;
 import newsfeed.model.*;
@@ -15,6 +16,8 @@ public class NewsFeed
                 Controller controller = new Controller();
                 Window window = new Window(controller);
                 controller.setWindow(window);
+                controller.startTimerThread();
+                window.setMinimumSize(new Dimension(800, 600));
                 window.setVisible(true);
             }
         });

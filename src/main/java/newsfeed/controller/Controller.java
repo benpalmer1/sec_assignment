@@ -1,13 +1,19 @@
 package newsfeed.controller;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import javax.swing.Timer;
 import newsfeed.view.*;
 import newsfeed.model.*;
 
@@ -121,6 +127,22 @@ public class Controller
         };
         new Thread(enqueueThread).start();
         // End of enqueue thread
+    }
+    
+    /* Using another thread to set the time every minute so
+    * that execution of the rest of the software is unaffectved by the clock. */
+    public void startTimerThread()
+    {
+        final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+        Calendar initial = Calendar.getInstance();
+        window.setTime(dateFormat.format(initial.getTime()));
+        
+        // Start update timer
+        new Timer(1000, (ActionEvent e) ->
+        {
+            Calendar now = Calendar.getInstance();
+            window.setTime(dateFormat.format(now.getTime()));
+        }).start(); // Update every minute.
     }
     
     public void stop()

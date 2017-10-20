@@ -47,7 +47,7 @@ public class Headline
         this.timestamp = timestamp;
     }
     
-    private String toString()
+    public String toString()
     {
         return (source + ": " + headline + "(" + timestamp + ")");
     }

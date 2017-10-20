@@ -1,5 +1,9 @@
 apply plugin: 'java'
 
+if (!hasProperty('mainClass')) {
+    ext.mainClass = 'newsfeed.controller.NewsFeed'
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'newsfeed.controller.NewsFeed'
