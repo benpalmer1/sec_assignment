@@ -59,7 +59,7 @@ public class NFWindow extends JFrame
         
         //BOTTOM MIDDLE AREA
         JPanel bottomMiddlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        URL url = this.getClass().getResource("../../loader.gif");
+        URL url = this.getClass().getResource("/loader.gif");
         ImageIcon icon = new ImageIcon(url);
         loadingIcon = new JLabel();
         cancelLoadButton = new JButton("Cancel");

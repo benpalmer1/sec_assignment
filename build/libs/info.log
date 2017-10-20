@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2017-10-21T03:47:52</date>
+  <millis>1508528872838</millis>
+  <sequence>0</sequence>
+  <logger>newsfeed</logger>
+  <level>INFO</level>
+  <class>newsfeed.controller.NFWindowController</class>
+  <method>lambda$logInfo$2</method>
+  <thread>17</thread>
+  <message>Add new plugin: source.com</message>
+</record>
+</log>

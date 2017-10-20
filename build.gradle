@@ -8,8 +8,4 @@ jar {
     manifest {
         attributes 'Main-Class': 'newsfeed.controller.NewsFeed'
     }
-	
-	from('src/main/resources') {
-		include '*.gif'
-	}
 }

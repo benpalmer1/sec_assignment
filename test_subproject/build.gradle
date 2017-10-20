@@ -1,0 +1,6 @@
+apply plugin: 'java'
+
+// Relies on the main project compiling before gradle can compile the sub project.
+dependencies {
+	compile project(':')
+}

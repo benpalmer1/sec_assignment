@@ -16,6 +16,7 @@ import java.util.logging.Level;
 import javax.swing.Timer;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+
 import newsfeed.view.*;
 import newsfeed.model.*;
 
@@ -74,9 +75,10 @@ public class NFWindowController
         }
         else    // Normal execution
         {
+            pluginList = new ArrayList<>();
             for(String plugin : plugins)
             {
-                Plugin newPlugin = Plugin.loadClassFile(plugin);
+                Plugin newPlugin = Plugin.loadClassFromJarFile(plugin);
                 if(newPlugin != null)
                 {
                     pluginList.add(newPlugin);

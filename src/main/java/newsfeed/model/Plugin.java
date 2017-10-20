@@ -1,14 +1,18 @@
 package newsfeed.model;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.io.IOException;
+import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Enumeration;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import newsfeed.controller.NFWindowController;
 
 /**
@@ -24,8 +28,8 @@ public abstract class Plugin
     private String pageText;
     
     // Values initialised in the plugin constructor:
-    private String source;
-    private int refreshInterval;
+    protected String source;
+    protected int refreshInterval;
     
     private boolean downloading = false;
     ArrayList<String> currentHeadlines;
@@ -106,30 +110,53 @@ public abstract class Plugin
      * Program will continue to run for plugins that cannot load properly however an error message will display.
      * Returns null when the plugin is of an incorrect format.
     */
-    public static Plugin loadClassFile(String pluginName)
+    public static Plugin loadClassFromJarFile(String pluginName)
     {
         Plugin newPlugin = null;
+        String className = "";
         try
         {
-            Class newClass = Class.forName(pluginName);
-            newPlugin = (Plugin) newClass.newInstance();
-        } catch (ClassNotFoundException e)
+                JarFile jarFile = new JarFile(pluginName);
+                if(jarFile != null)
+                {
+                    Enumeration jarComponents = jarFile.entries();
+
+                    while (jarComponents.hasMoreElements())
+                    {
+                        JarEntry entry = (JarEntry) jarComponents.nextElement();
+                        if(entry.getName().endsWith(".class"))
+                        {
+                            className = entry.getName();
+                        }
+                    }
+                    // Set file directory URL containing the .jar
+                    File file = new File(System.getProperty("user.dir")+"/"+pluginName);
+                    URLClassLoader loader = new URLClassLoader(new URL[]{file.toURI().toURL()});
+                    // Initialise the class.
+                    Class newClass = Class.forName(className.replace(".class", ""), true, loader);
+                    newPlugin = (Plugin) newClass.newInstance();
+                }
+        }
+        catch (ClassNotFoundException | IOException e)
         {
-            NFWindowController.logException("Error: Plugin class not found.", e);
-        } catch(InstantiationException | IllegalAccessException | ClassCastException e)
+            NFWindowController.logException("Error: Plugin class not found. Class name: " + className, e);
+        }
+        catch(InstantiationException | IllegalAccessException | ClassCastException e)
         {
-            NFWindowController.logException("Error: Cannot instantiate plugin class.", e);
+            NFWindowController.logException("Error: Cannot instantiate plugin class. Class name: " + className, e);
         }
         
-        if(newPlugin.getSource().equals(""))
+        if(newPlugin != null)
         {
-            newPlugin = null;
+            if(newPlugin.getSource() == null)
+            {
+                newPlugin = null;
+            }
+            else if(newPlugin.getRefreshInterval() <= 0)
+            {
+                newPlugin = null;
+            }
         }
-        else if(newPlugin.getRefreshInterval()<=0)
-        {
-            newPlugin = null;
-        }
-        
         return newPlugin;
     }
     
