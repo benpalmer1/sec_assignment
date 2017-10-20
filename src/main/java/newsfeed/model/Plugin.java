@@ -30,8 +30,6 @@ public abstract class Plugin
     // Template method required to be implemented in the plugin
     public abstract ArrayList<String> getHeadlines(String pageText);   // Method to parse the page HTML
     
-    
-    
     public String getSource()
     {
         return this.source;

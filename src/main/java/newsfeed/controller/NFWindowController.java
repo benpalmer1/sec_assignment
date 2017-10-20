@@ -23,7 +23,7 @@ public class NFWindowController
     // Reference to the window
     private NFWindow window = null;
     
-    private LinkedBlockingQueue<Path>   queue = new LinkedBlockingQueue<>();
+    private LinkedBlockingQueue<Path> queue = new LinkedBlockingQueue<>();
     private ExecutorService executorService;
     
     private boolean running = true;
@@ -49,8 +49,8 @@ public class NFWindowController
         Calendar initial = Calendar.getInstance();
         window.setTime(dateFormat.format(initial.getTime()));
         
-        // Start update timer
-        timeTimer = new Timer(1000, (ActionEvent e) ->
+        // Start update timer to update every minute.
+        timeTimer = new Timer(60000, (ActionEvent e) ->
         {
             Calendar now = Calendar.getInstance();
             window.setTime(dateFormat.format(now.getTime()));
