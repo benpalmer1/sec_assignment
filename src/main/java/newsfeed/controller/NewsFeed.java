@@ -9,11 +9,11 @@ public class NewsFeed
 {
     public static void main(String[] args)
     {
-        SwingUtilities.invokeLater(new Runnable()
+        SwingUtilities.invokeLater(new Runnable() // Or could have used a lambda here.
         {
             @Override public void run()
             {            
-                Controller controller = new Controller();
+                WindowController controller = new WindowController();
                 Window window = new Window(controller);
                 controller.setWindow(window);
                 controller.startTimerThread();

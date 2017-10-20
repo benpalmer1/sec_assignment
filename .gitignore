@@ -6,3 +6,8 @@
 #Gradle Files
 /.nb-gradle/
 .gradle/
+
+#Testing Files
+error.log
+error.log.*
+error.log./

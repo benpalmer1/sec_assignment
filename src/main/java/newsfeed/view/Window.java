@@ -13,12 +13,12 @@ public class Window extends JFrame
 {
     // A list-like container used to keep track of headlines.
     private DefaultListModel<String> headlines;
-    private Controller controller;
+    private WindowController controller;
     private JButton updateButton;
     private JButton cancelLoadButton;
     private JLabel timeLabel;
     
-    public Window(final Controller controller)
+    public Window(final WindowController controller)
     {
         super("Newsfeed");
         // Listener for exit by the system default window close button.
@@ -37,7 +37,7 @@ public class Window extends JFrame
         timeLabel = new JLabel("");
         updateButton = new JButton("Update Now");
         updateButton.setToolTipText("Force update all news feeds now.");
-        topPanel.add(new JLabel("Time:"));
+        topPanel.add(new JLabel("Time: "));
         topPanel.add(timeLabel);
         topPanel.add(Box.createHorizontalGlue());
         topPanel.add(updateButton);
