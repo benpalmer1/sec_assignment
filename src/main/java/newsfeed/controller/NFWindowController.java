@@ -5,6 +5,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Executors;
@@ -28,11 +29,10 @@ public class NFWindowController
     
     private boolean running = true;
     private Timer timeTimer;
-    private Logger logger;
+    private ArrayList<Plugin> pluginList;
         
     public NFWindowController()
     {
-        initLogger();
         executorService = Executors.newFixedThreadPool(10);
     }
 
@@ -64,32 +64,67 @@ public class NFWindowController
         return this.window;
     }
     
-    // Initialise the logger. All logging tasks are run in separate threads using the logException and logInfo handlers
-    public void initLogger()
+    public void initPlugins(String[] plugins)
     {
-        try
+        if(plugins.length == 0)
         {
-            Handler handler = new FileHandler("error.log");
-            logger = Logger.getLogger("newsfeed");
-            logger.setLevel(Level.ALL);
-            Logger.getLogger("").addHandler(handler);
+            window.showError("No plugins specified. Specify one or more newsfeed plugins in initial command line arguments.");
+            stop();
+            System.exit(0);
         }
-        catch(IOException e)
+        else    // Normal execution
         {
-            JOptionPane.showMessageDialog(null, "Error: Unable to start logger.");
-            stop(); // Unable to log events, stop the program.
+            for(String plugin : plugins)
+            {
+                Plugin newPlugin = Plugin.loadClassFile(plugin);
+                if(newPlugin != null)
+                {
+                    pluginList.add(newPlugin);
+                    logInfo("Add new plugin: " + newPlugin.getSource());
+                }
+                else
+                {
+                    window.showError("Error: Cannot instantiate plugin class.");
+                }
+            }
         }
     }
     
-    public void logException(String logString)
+    public static void logException(String logString, Exception e)
     {
-        Runnable logTask = () -> { logger.severe(logString); };
+        Runnable logTask = () -> { 
+            try
+            {
+                Handler handler = new FileHandler("error.log");
+                Logger logger = Logger.getLogger("newsfeed");
+                logger.setLevel(Level.ALL);
+                logger.addHandler(handler);
+                logger.log(Level.SEVERE, logString, e);
+            }
+            catch (IOException ex)
+            {
+                System.err.println("Error: Unable to log exception message. Message: " + logString);
+            }
+        };
         new Thread(logTask).start();
     }
     
-    public void logInfo(String logString)
+    public static void logInfo(String logString)
     {
-        Runnable logTask = () -> { logger.info(logString); };
+        Runnable logTask = () -> { 
+            try
+            {
+                Handler handler = new FileHandler("info.log");
+                Logger logger = Logger.getLogger("newsfeed");
+                logger.setLevel(Level.ALL);
+                logger.addHandler(handler);
+                logger.log(Level.INFO, logString);
+            }
+            catch (IOException ex)
+            {
+                System.err.println("Error: Unable to log info message. Message: " + logString);
+            }
+        };
         new Thread(logTask).start();
     }
 

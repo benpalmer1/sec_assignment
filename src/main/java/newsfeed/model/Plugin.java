@@ -27,8 +27,11 @@ public abstract class Plugin
     private String source;
     private int refreshInterval;
     
+    private boolean downloading = false;
+    ArrayList<String> currentHeadlines;
+
     // Template method required to be implemented in the plugin
-    public abstract ArrayList<String> getHeadlines(String pageText);   // Method to parse the page HTML
+    protected abstract ArrayList<String> parseHeadlines(String pageText);   // Method to parse the page HTML
     
     public String getSource()
     {
@@ -40,46 +43,70 @@ public abstract class Plugin
         return this.refreshInterval;
     }
     
-    public void loadSource()
+    public ArrayList<String> getHeadlines()
     {
-        try
-        {    
-            URL url = new URL(getSource()); // Download source
-            try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
-            {
-                // "try-with-resources" statement; will automatically call
-                // chan.close() when finished.
-                ByteBuffer buf = ByteBuffer.allocate(65536);
-                byte[] array = buf.array();
-                int bytesRead = chan.read(buf); // Read a chunk of data.
-                
-                while(bytesRead != -1)
-                {
-                    // Get data from array[0 .. bytesRead - 1] 
-                    buf.clear();
-                    bytesRead = chan.read(buf);
-                }
-               pageText = new String(array, StandardCharsets.UTF_8);
-            }
-            catch(ClosedByInterruptException e) {   // Thread.interrupt()
-                windowController.logInfo("Download of page cancelled.");
-            }
-            catch(IOException e) {  // An error
-                windowController.logException("Error: Error downloading URL.");
-                windowController.getWindow().showError("Error: Error downloading URL.");
-            }
-        }
-        catch(MalformedURLException e)  // Plugin has incorrect URL
+        return this.currentHeadlines;
+    }
+    public ArrayList<String> refreshHeadlines()
+    {
+        if(!downloading)   // Else page is currently being downloaded, do nothing
         {
-            windowController.logException("Error: Specified plugin URL of incorrect format.");
-            windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
+            downloading = true;
+            try
+            {   
+                windowController.getWindow().startLoading();
+                windowController.getWindow().addDownload(getSource());
+
+                URL url = new URL(getSource()); // Download source
+                try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
+                {
+                    // "try-with-resources" statement; will automatically call
+                    // chan.close() when finished.
+                    ByteBuffer buf = ByteBuffer.allocate(65536);
+                    byte[] array = buf.array();
+                    int bytesRead = chan.read(buf); // Read a chunk of data.
+
+                    while(bytesRead != -1)
+                    {
+                        // Get data from array[0 .. bytesRead - 1] 
+                        buf.clear();
+                        bytesRead = chan.read(buf);
+                    }
+                   pageText = new String(array, StandardCharsets.UTF_8);
+                   currentHeadlines = parseHeadlines(pageText);
+                   NFWindowController.logInfo("Downloaded headlines from source: " + source);
+                }
+                catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
+                    NFWindowController.logInfo("Download of page cancelled.");
+                }
+                catch(IOException e) {  // An error
+                    NFWindowController.logException("Error: Error downloading URL.", e);
+                    windowController.getWindow().showError("Error: Error downloading URL.");
+                }
+            }
+            catch(MalformedURLException e)  // Plugin has incorrect URL
+            {
+                NFWindowController.logException("Error: Specified plugin URL of incorrect format.", e);
+                windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
+            }
+            finally
+            {
+                if(windowController != null)
+                {
+                    windowController.getWindow().stopLoading();
+                    windowController.getWindow().deleteDownload(getSource());
+                    downloading = false;
+                }
+            }
         }
+        return currentHeadlines;
     }
     
     /** Method to dynamically load a class file.
      * Program will continue to run for plugins that cannot load properly however an error message will display.
+     * Returns null when the plugin is of an incorrect format.
     */
-    public Plugin loadClassFile(String pluginName)
+    public static Plugin loadClassFile(String pluginName)
     {
         Plugin newPlugin = null;
         try
@@ -88,12 +115,19 @@ public abstract class Plugin
             newPlugin = (Plugin) newClass.newInstance();
         } catch (ClassNotFoundException e)
         {
-            windowController.logException("Error: Plugin class not found.");
-            windowController.getWindow().showError("Error: Plugin class not found.");
+            NFWindowController.logException("Error: Plugin class not found.", e);
         } catch(InstantiationException | IllegalAccessException | ClassCastException e)
         {
-            windowController.logException("Error: Cannot instantiate plugin class.");
-            windowController.getWindow().showError("EError: Cannot instantiate plugin class.");
+            NFWindowController.logException("Error: Cannot instantiate plugin class.", e);
+        }
+        
+        if(newPlugin.getSource().equals(""))
+        {
+            newPlugin = null;
+        }
+        else if(newPlugin.getRefreshInterval()<=0)
+        {
+            newPlugin = null;
         }
         
         return newPlugin;

@@ -51,11 +51,11 @@ public class NFWindow extends JFrame
         headlines.addElement("test 2");
         JPanel middlePanel = new JPanel();
         middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
-        JScrollPane resultsList = new JScrollPane(new JList<String>(headlines));
+        JScrollPane headlinesList = new JScrollPane(new JList<String>(headlines));
         TitledBorder title = BorderFactory.createTitledBorder("Headlines");
         Border outer = BorderFactory.createCompoundBorder(title, new EmptyBorder(0, 5, 5, 5));
         middlePanel.setBorder(outer);
-        middlePanel.add(resultsList, BorderLayout.CENTER);
+        middlePanel.add(headlinesList, BorderLayout.CENTER);
         
         //BOTTOM MIDDLE AREA
         JPanel bottomMiddlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -132,29 +132,41 @@ public class NFWindow extends JFrame
         loadingIcon.setVisible(false);
     }
     
+    
     public void setTime(String time)    
     {
         timeLabel.setText(time);
     }
     
-    public void addResult(String result)
+    
+    public DefaultListModel<String> getHeadlines()
     {
-        headlines.addElement(result);
+        return this.headlines;
+    }
+    public void addHeadline(String headline)
+    {
+        headlines.addElement(headline);
     }
     
-    public void deleteResult(String result)
+    public void deleteHeadline(String headline)
     {
-        headlines.removeElement(result);
+        headlines.removeElement(headline);
+    }
+    
+    
+    public DefaultListModel<String> getDownloads()
+    {
+        return this.downloads;
     }
     
     public void addDownload(String download)
     {
-        headlines.addElement(download);
+        downloads.addElement(download);
     }
     
     public void deleteDownload(String download)
     {
-        headlines.removeElement(download);
+        downloads.removeElement(download);
     }
     
     public void showError(String message)
