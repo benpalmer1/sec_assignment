@@ -2,12 +2,16 @@
 *.class
 *.jar
 *.MF
+build/**
 
 #Gradle Files
 /.nb-gradle/
 .gradle/
+.nb-gradle*
 
 #Testing Files
 error.log
 error.log.*
 error.log./
+*.log
+*.log.*
