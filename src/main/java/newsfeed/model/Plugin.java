@@ -116,6 +116,8 @@ public abstract class Plugin
         String className = "";
         try
         {
+            if(pluginName.endsWith(".jar"))
+            {
                 JarFile jarFile = new JarFile(pluginName);
                 if(jarFile != null)
                 {
@@ -136,6 +138,12 @@ public abstract class Plugin
                     Class newClass = Class.forName(className.replace(".class", ""), true, loader);
                     newPlugin = (Plugin) newClass.newInstance();
                 }
+            }
+            else if(pluginName.endsWith(".class"))
+            {
+                Class newClass = Class.forName(className.replace(".class", ""));
+                newPlugin = (Plugin) newClass.newInstance();
+            }   
         }
         catch (ClassNotFoundException | IOException e)
         {
