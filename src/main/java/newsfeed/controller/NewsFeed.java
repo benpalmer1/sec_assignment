@@ -17,6 +17,7 @@ public class NewsFeed
                 NFWindow window = new NFWindow(controller);
                 controller.setWindow(window);
                 controller.startTimerThread();
+                controller.setPluginScheduler(new NFPluginScheduler(controller));
                 controller.initPlugins(args);
                 window.setMinimumSize(new Dimension(800, 600));
                 window.setVisible(true);

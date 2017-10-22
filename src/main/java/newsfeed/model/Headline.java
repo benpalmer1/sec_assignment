@@ -47,8 +47,9 @@ public class Headline
         this.timestamp = timestamp;
     }
     
+    @Override
     public String toString()
     {
-        return (source + ": " + headline + "(" + timestamp + ")");
+        return (source + ": " + headline + " (" + timestamp + ")");
     }
 }

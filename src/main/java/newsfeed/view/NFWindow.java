@@ -3,6 +3,7 @@ package newsfeed.view;
 import java.awt.*;
 import java.awt.event.*;
 import java.net.URL;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
@@ -24,6 +25,8 @@ public class NFWindow extends JFrame
     public NFWindow(final NFWindowController controller)
     {
         super("Newsfeed");
+        
+        this.controller = controller;
         // Listener for exit by the system default window close button.
         this.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override public void windowClosing(WindowEvent winEvt) {
@@ -47,8 +50,8 @@ public class NFWindow extends JFrame
         
         //TOP MIDDLE AREA
         headlines = new DefaultListModel<>();
-        headlines.addElement("test");
-        headlines.addElement("test 2");
+        headlines.add(0,"test");
+        headlines.add(0,"test 2");
         JPanel middlePanel = new JPanel();
         middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
         JScrollPane headlinesList = new JScrollPane(new JList<String>(headlines));
@@ -67,8 +70,8 @@ public class NFWindow extends JFrame
         icon.setImageObserver(loadingIcon);
         loadingIcon.setVisible(false);
         cancelLoadButton.setToolTipText("Cancel current loading of headlines. Scheduled updates remain unaffected.");
-        bottomMiddlePanel.add(loadingIcon);
         bottomMiddlePanel.add(cancelLoadButton);
+        bottomMiddlePanel.add(loadingIcon);
         
         
         // BOTTOM AREA
@@ -107,7 +110,7 @@ public class NFWindow extends JFrame
         {
             @Override public void actionPerformed(ActionEvent e)
             {
-                //controller.update();
+                controller.update();
             }
         });
         
@@ -118,26 +121,53 @@ public class NFWindow extends JFrame
             @Override public void actionPerformed(ActionEvent e)
             {
                 downloads.clear();
+                controller.cancelAllRunning();
             }
         });
+    }
+    
+    // Updates the GUI with the list of headlines and adds or removes as applicable.
+    // Done this way to make sure the items in the list stay in order
+    public synchronized void updateHeadlines(String source, ArrayList<String> newSourceHeadlines)
+    {
+        for(Object hl : headlines.toArray())    // Check to remove headlines.
+        {
+            if(((String)hl).startsWith(source)) // So that some are not unnecessarily checked
+            {
+                if(!newSourceHeadlines.contains((String)hl))
+                {
+                    headlines.removeElement(hl);
+                }
+            }
+        }
+        
+        for(String newHl : newSourceHeadlines)   // Check to add new headlines.
+        {
+            if(!headlines.contains(newHl))
+            {
+                headlines.add(0,newHl);
+            }
+        }
+    }
+    
+    public String getTime()
+    {
+        return timeLabel.getText();
     }
     
     public void startLoading()
     {
         loadingIcon.setVisible(true);
     }
-    
     public void stopLoading()
     {
         loadingIcon.setVisible(false);
-    }
-    
+    } 
     
     public void setTime(String time)    
     {
         timeLabel.setText(time);
     }
-    
     
     public DefaultListModel<String> getHeadlines()
     {
@@ -145,25 +175,21 @@ public class NFWindow extends JFrame
     }
     public void addHeadline(String headline)
     {
-        headlines.addElement(headline);
+        headlines.add(0, headline);
     }
-    
     public void deleteHeadline(String headline)
     {
         headlines.removeElement(headline);
     }
     
-    
     public DefaultListModel<String> getDownloads()
     {
         return this.downloads;
     }
-    
     public void addDownload(String download)
     {
-        downloads.addElement(download);
+        downloads.add(0, download);
     }
-    
     public void deleteDownload(String download)
     {
         downloads.removeElement(download);
