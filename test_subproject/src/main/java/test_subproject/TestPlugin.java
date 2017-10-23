@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import newsfeed.model.Headline;
@@ -14,13 +13,13 @@ public class TestPlugin extends Plugin
     public TestPlugin()
     {
         source = "http://www.aerocare.com.au";
-        refreshInterval = 1;
+        refreshInterval = 20;
     }
     
     @Override
     protected ArrayList<Headline> parseHeadlines(String pageText)
     {
-        ArrayList<Headline> headlineList = new ArrayList();
+        ArrayList<Headline> headlineList = new ArrayList<>();
         Pattern pattern = Pattern.compile("<h(.).*>(.*)</h\\1>");
         Matcher matcher = pattern.matcher(pageText);
 
@@ -28,7 +27,10 @@ public class TestPlugin extends Plugin
         {
             if (matcher.group(2) != null)
             {
-                headlineList.add(new Headline(source, matcher.group(2), getWindowController().getWindow().getTime()));
+                if(!matcher.group(2).trim().equals(""))
+                {
+                    headlineList.add(new Headline(source, matcher.group(2), getWindowController().getWindow().getTime()));
+                }
             }
         }
 

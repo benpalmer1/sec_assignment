@@ -3,13 +3,11 @@ package newsfeed.controller;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import newsfeed.model.Headline;
 import newsfeed.model.Plugin;
 
 /**
@@ -20,13 +18,15 @@ import newsfeed.model.Plugin;
 public class NFPluginScheduler extends ScheduledThreadPoolExecutor
 {
     private ScheduledThreadPoolExecutor pluginScheduler;
-    private List<ScheduledFuture<Plugin>> currentlyRunningPlugins;
+    private final List<ScheduledFuture<Plugin>> currentlyRunningPlugins;
+    private final List<Plugin> allPlugins;
     private NFWindowController controller;
     
     public NFPluginScheduler(NFWindowController controller)
     {
         super(10);  // init parent as executor.
-        currentlyRunningPlugins = Collections.synchronizedList(new ArrayList<ScheduledFuture<Plugin>>());          // To make sure the currently running list is not corrupted.
+        currentlyRunningPlugins = Collections.synchronizedList(new ArrayList<>());   // To make sure the currently running list is not corrupted when update or cancel is selected.
+        allPlugins = Collections.synchronizedList(new ArrayList<>());
         pluginScheduler = this;  // Maximum of 10 threads.
         pluginScheduler.setRemoveOnCancelPolicy(true);
         this.controller = controller;
@@ -35,25 +35,31 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
     @SuppressWarnings("unchecked")
     public void addPlugin(Plugin newPlugin)
     {
+        allPlugins.add(newPlugin);
         try
         {
             Runnable pluginRefresh = () -> // lambda expression to make a new runnable thread, to run the specific plugin's refresh code
             {
-                controller.getWindow().addDownload(newPlugin.getSource());
-                controller.getWindow().startLoading();
-
-                ArrayList<String> newHeadlines = newPlugin.refreshHeadlines();
+                controller.addDownload(newPlugin.getSource());
+                List<Headline> newHeadlines = newPlugin.refreshHeadlines();
                 if(newHeadlines != null)
                 {
-                    controller.getWindow().updateHeadlines(newPlugin.getSource(), newHeadlines);
+                    controller.updateHeadlines(newHeadlines);
                 }
-                controller.getWindow().stopLoading();
-                controller.getWindow().deleteDownload(newPlugin.getSource());
+                controller.deleteDownload(newPlugin.getSource());
             };  // End of plugin refresh thread.
             
             afterExecute(pluginRefresh, null);  // To remove from the currently executing queue after refreshing the plugin information.
-            ScheduledFuture newFuture = pluginScheduler.scheduleAtFixedRate(pluginRefresh, 0, newPlugin.getRefreshInterval(), TimeUnit.MINUTES);
-            currentlyRunningPlugins.add(newFuture);
+            
+            // Make sure that tasks are executed in the correctly:
+            synchronized(pluginScheduler)
+            {
+                ScheduledFuture newFuture = pluginScheduler.scheduleAtFixedRate(pluginRefresh, 0, newPlugin.getRefreshInterval(), TimeUnit.SECONDS);
+                synchronized(currentlyRunningPlugins)
+                {
+                    currentlyRunningPlugins.add(newFuture);
+                }
+            }
         }
         catch(RejectedExecutionException e)
         {
@@ -63,27 +69,40 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
 
     public void cancelAllRunning()
     {
-        for(ScheduledFuture f : currentlyRunningPlugins)
+        synchronized(currentlyRunningPlugins)
         {
-            f.cancel(true);
+            for(ScheduledFuture<Plugin> f : currentlyRunningPlugins)
+            {
+                f.cancel(true);
+            }
+            currentlyRunningPlugins.clear();
         }
-        
-        currentlyRunningPlugins.clear();
     }
     
     public void updateAllNow()
     {
-        for(Runnable task : pluginScheduler.getQueue())
+        synchronized(pluginScheduler)   // To stop a plugin being added whilst updating
         {
-            task.run();
+            synchronized(currentlyRunningPlugins)   // To make sure the plugin is not cancelled whilst checking if running or not.
+            {
+                for(Runnable task : pluginScheduler.getQueue())
+                {
+                    ScheduledFuture<Plugin> result = (ScheduledFuture<Plugin>)task;
+                    if(!currentlyRunningPlugins.contains(result))
+                    {
+                        ScheduledFuture newFuture = pluginScheduler.schedule(task, 0, TimeUnit.SECONDS);
+                        currentlyRunningPlugins.add(newFuture);
+                    }
+                }
+            }
         }
     }
     
-    public void stopAll()
+    public void stopAll() throws InterruptedException
     {
         pluginScheduler.shutdownNow();
+        pluginScheduler.awaitTermination(5, TimeUnit.SECONDS);
     }
-    
     
     // Method which will run after each future has completed, to remove them from the currently executing list.
     // Implemented as per specification from JavaDOCS - ThreadPoolExecutor.afterExecute()

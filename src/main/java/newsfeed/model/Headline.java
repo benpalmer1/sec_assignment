@@ -6,20 +6,20 @@ package newsfeed.model;
 
 public class Headline
 {
-    private String source;
+    private String sourceURL;
     private String headline;
     private String timestamp;
     
     public Headline(String source, String headline, String timestamp)
     {
-        this.source = source;
+        this.sourceURL = source;
         this.headline = headline;
         this.timestamp = timestamp;
     }
     
-    public String getSource()
+    public String getSourceURL()
     {
-        return source;
+        return sourceURL;
     }
     
     public String getHeadline()
@@ -32,9 +32,9 @@ public class Headline
         return timestamp;
     }
     
-    public void setSource(String source)
+    public void setSourceURL(String sourceURL)
     {
-        this.source = source;
+        this.sourceURL = sourceURL;
     }
     
     public void setHeadline(String headline)
@@ -50,6 +50,9 @@ public class Headline
     @Override
     public String toString()
     {
-        return (source + ": " + headline + " (" + timestamp + ")");
+        // Trim off the start of the source URL
+        String tempSource = sourceURL.replace("http://", "");
+        tempSource = sourceURL.replace("https://", "");
+        return (tempSource + ": " + headline + " (" + timestamp + ")");
     }
 }

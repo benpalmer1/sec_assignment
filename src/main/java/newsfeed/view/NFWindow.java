@@ -29,10 +29,19 @@ public class NFWindow extends JFrame
         this.controller = controller;
         // Listener for exit by the system default window close button.
         this.addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override public void windowClosing(WindowEvent winEvt) {
+            @Override public void windowClosing(WindowEvent winEvt) {
+                try
+                {
                     controller.stop();
-                    System.exit(0);
                 }
+                catch(InterruptedException e)
+                {
+                    // Log event to report incorrect shutdown.
+                    NFWindowController.logException("Error: Shutdown interrupted.", e);
+                    System.exit(1);
+                }
+                System.exit(0);
+            }
         });
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         
@@ -45,13 +54,10 @@ public class NFWindow extends JFrame
         updateButton.setToolTipText("Force update all news feeds now.");
         topPanel.add(updateButton);
         topPanel.add(Box.createHorizontalGlue());
-        topPanel.add(new JLabel("Time: "));
         topPanel.add(timeLabel);
         
         //TOP MIDDLE AREA
         headlines = new DefaultListModel<>();
-        headlines.add(0,"test");
-        headlines.add(0,"test 2");
         JPanel middlePanel = new JPanel();
         middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
         JScrollPane headlinesList = new JScrollPane(new JList<String>(headlines));
@@ -76,8 +82,6 @@ public class NFWindow extends JFrame
         
         // BOTTOM AREA
         downloads = new DefaultListModel<>();
-        downloads.addElement("test");
-        downloads.addElement("test 2");
         JPanel bottomDlListPanel = new JPanel();
         bottomDlListPanel.setLayout(new BoxLayout(bottomDlListPanel, BoxLayout.Y_AXIS));
         JScrollPane downloadsList = new JScrollPane(new JList<String>(downloads));
@@ -126,30 +130,6 @@ public class NFWindow extends JFrame
         });
     }
     
-    // Updates the GUI with the list of headlines and adds or removes as applicable.
-    // Done this way to make sure the items in the list stay in order
-    public synchronized void updateHeadlines(String source, ArrayList<String> newSourceHeadlines)
-    {
-        for(Object hl : headlines.toArray())    // Check to remove headlines.
-        {
-            if(((String)hl).startsWith(source)) // So that some are not unnecessarily checked
-            {
-                if(!newSourceHeadlines.contains((String)hl))
-                {
-                    headlines.removeElement(hl);
-                }
-            }
-        }
-        
-        for(String newHl : newSourceHeadlines)   // Check to add new headlines.
-        {
-            if(!headlines.contains(newHl))
-            {
-                headlines.add(0,newHl);
-            }
-        }
-    }
-    
     public String getTime()
     {
         return timeLabel.getText();
@@ -163,6 +143,11 @@ public class NFWindow extends JFrame
     {
         loadingIcon.setVisible(false);
     } 
+    
+    public boolean isLoading()
+    {
+        return loadingIcon.isVisible();
+    }
     
     public void setTime(String time)    
     {

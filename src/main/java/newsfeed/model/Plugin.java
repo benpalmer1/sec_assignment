@@ -9,11 +9,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import newsfeed.controller.NFWindowController;
 /**
  * @author Benjamin Nicholas Palmer
@@ -29,12 +29,15 @@ public abstract class Plugin
     // Values initialised in the plugin constructor:
     protected String source;
     protected int refreshInterval;
-    
-    private boolean downloading = false;
-    protected ArrayList<String> currentHeadlines;
+    protected final List<Headline> currentHeadlines;
 
     // Template method required to be implemented in the plugin
     abstract protected ArrayList<Headline> parseHeadlines(String pageText);   // Method to parse the page HTML
+    
+    public Plugin()
+    {
+        currentHeadlines = Collections.synchronizedList(new ArrayList<>());
+    }
     
     public String getSource()
     {
@@ -46,9 +49,15 @@ public abstract class Plugin
         return this.refreshInterval;
     }
     
-    public ArrayList<String> getHeadlinesFormatted()
+    public static ArrayList<String> getHeadlinesFormatted(List<Headline> toFormatHeadlines)
     {
-        return this.currentHeadlines;
+        ArrayList<String> formattedHeadlines = new ArrayList<>();
+        for(Headline h : toFormatHeadlines)
+        {
+            formattedHeadlines.add(h.toString());
+        }
+
+        return formattedHeadlines;
     }
     
     public void setWindowController(NFWindowController controller)
@@ -61,60 +70,47 @@ public abstract class Plugin
         return this.windowController;
     }
     
-    public ArrayList<String> refreshHeadlines()
+    public List<Headline> refreshHeadlines()
     {
-        if(!downloading)   // Else page is currently being downloaded, do nothing
-        {
-            downloading = true;
-            try
-            {   
-                URL url = new URL(source); // Download source
-                try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
-                {
-                    // "try-with-resources" statement; will automatically call
-                    // chan.close() when finished.
-                    ByteBuffer buf = ByteBuffer.allocate(65536);
-                    byte[] array = buf.array();
-                    int bytesRead = chan.read(buf); // Read a chunk of data.
+        try
+        {   
+            URL url = new URL(source); // Download source
+            try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
+            {
+                // "try-with-resources" statement; will automatically call
+                // chan.close() when finished.
+                ByteBuffer buf = ByteBuffer.allocate(65536);
+                byte[] array = buf.array();
+                int bytesRead = chan.read(buf); // Read a chunk of data.
 
-                    while(bytesRead != -1)
-                    {
-                        // Get data from array[0 .. bytesRead - 1] 
-                        buf.clear();
-                        bytesRead = chan.read(buf);
-                    }
-                    pageText = new String(array, StandardCharsets.UTF_8);
-                    ArrayList<Headline> temp = parseHeadlines(pageText);
-                    
-                    currentHeadlines = new ArrayList<>();
-                    for(Headline h : temp)
-                    {
-                       currentHeadlines.add(h.toString());
-                    }
-                    NFWindowController.logInfo("Downloaded headlines from source: " + source);
-                }
-                catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
-                    NFWindowController.logInfo("Download of page cancelled: " + getSource());
-                    downloading = false;
-                    currentHeadlines = null;
-                }
-                catch(IOException e) {  // An error
-                    NFWindowController.logException("Error: Error downloading URL: ", e);
-                    windowController.getWindow().showError("Error: Error downloading URL: "+e.getMessage());
-                }
-            }
-            catch(MalformedURLException e)  // Plugin has incorrect URL
-            {
-                NFWindowController.logException("Error: Specified plugin URL of incorrect format.", e);
-                windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
-            }
-            finally
-            {
-                if(windowController != null)
+                while(bytesRead != -1)
                 {
-                    downloading = false;
+                    // Get data from array[0 .. bytesRead - 1] 
+                    buf.clear();
+                    bytesRead = chan.read(buf);
                 }
+                pageText = new String(array, StandardCharsets.UTF_8);
+                
+                synchronized(currentHeadlines)
+                {
+                    currentHeadlines.clear();
+                    currentHeadlines.addAll(parseHeadlines(pageText));
+                }
+                
+                NFWindowController.logInfo("Downloaded headlines from source: " + source);
             }
+            catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
+                NFWindowController.logInfo("Download of page cancelled: " + getSource());
+            }
+            catch(IOException e) {  // An error
+                NFWindowController.logException("Error: Error downloading URL: " + getSource(), e);
+                windowController.getWindow().showError("Error: Error downloading URL: "+e.getMessage());
+            }
+        }
+        catch(MalformedURLException e)  // Plugin has incorrect URL
+        {
+            NFWindowController.logException("Error: Specified plugin URL of incorrect format.", e);
+            windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
         }
         return currentHeadlines;
     }
