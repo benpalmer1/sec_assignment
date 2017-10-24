@@ -13,7 +13,7 @@ Use Gradle to compile the application:
 The build process will create a .jar file in build/libs. You can run the application as follows:
 
     $ java -jar build/libs/newsfeed.jar
-    # Ensure that all plugin jars are also moved into the same directory.
+    # Ensure that all plugin jars are also moved into the build/libs/ directory.
 
 Source code
 -----------
