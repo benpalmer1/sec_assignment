@@ -9,11 +9,20 @@ Building and Running
 Use Gradle to compile the application:
 
     $ gradle build
-    
-The build process will create a .jar file in build/libs. You can run the application as follows:
 
-    $ java -jar build/libs/newsfeed.jar
-    # Ensure that all plugin jars are also moved into the build/libs/ directory.
+I built a gradle task to move all subproject jars into the build/libs directory automatically:
+
+    $ gradle moveJars
+
+Or for ease of use, combine the commands:
+
+    $ gradle build moveJars
+    
+Following this build process, you will create a 'newsfeed.jar' and move all 'aPlugin.jar' files into build/libs.
+You can then run the application using the default news sources as follows:
+
+    $ cd build/libs
+    $ java -jar newsfeed.jar arstechnica.jar bbcsnews.jar nytimes.jar
 
 Source code
 -----------
