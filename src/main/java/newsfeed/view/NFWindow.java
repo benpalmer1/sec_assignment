@@ -3,14 +3,19 @@ package newsfeed.view;
 import java.awt.*;
 import java.awt.event.*;
 import java.net.URL;
-import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import newsfeed.controller.*;
-import newsfeed.model.*;
 
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Window class to control the main application window in Swing.
+ * Contains various areas that are loaded into a Container and displayed to the user.
+ * Most actions are delegated to the controller to maintain class responsibility.
+ */
 public class NFWindow extends JFrame
 {
     // A list-like container used to keep track of headlines.
@@ -25,8 +30,8 @@ public class NFWindow extends JFrame
     public NFWindow(final NFWindowController controller)
     {
         super("Newsfeed");
-        
         this.controller = controller;
+        
         // Listener for exit by the system default window close button.
         this.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(WindowEvent winEvt) {
@@ -37,7 +42,7 @@ public class NFWindow extends JFrame
                 catch(InterruptedException e)
                 {
                     // Log event to report incorrect shutdown.
-                    NFWindowController.logException("Error: Shutdown interrupted.", e);
+                    NFEventLogger.logException("Error: Shutdown interrupted.", e);
                     System.exit(1);
                 }
                 System.exit(0);
@@ -78,8 +83,7 @@ public class NFWindow extends JFrame
         cancelLoadButton.setToolTipText("Cancel current loading of headlines. Scheduled updates remain unaffected.");
         bottomMiddlePanel.add(cancelLoadButton);
         bottomMiddlePanel.add(loadingIcon);
-        
-        
+         
         // BOTTOM AREA
         downloads = new DefaultListModel<>();
         JPanel bottomDlListPanel = new JPanel();
@@ -109,7 +113,6 @@ public class NFWindow extends JFrame
     private void setActionListeners()
     {
         // When the "Update Now" button is pressed, update the list.
-        // TO DO
         updateButton.addActionListener(new ActionListener()
         {
             @Override public void actionPerformed(ActionEvent e)
@@ -119,7 +122,6 @@ public class NFWindow extends JFrame
         });
         
         // When the "Cancel" button is pressed
-        // TO DO
         cancelLoadButton.addActionListener(new ActionListener()
         {   
             @Override public void actionPerformed(ActionEvent e)
@@ -134,6 +136,10 @@ public class NFWindow extends JFrame
     {
         return timeLabel.getText();
     }
+    public void setTime(String time)    
+    {
+        timeLabel.setText(time);
+    }
     
     public void startLoading()
     {
@@ -143,16 +149,11 @@ public class NFWindow extends JFrame
     {
         loadingIcon.setVisible(false);
     } 
-    
     public boolean isLoading()
     {
         return loadingIcon.isVisible();
     }
     
-    public void setTime(String time)    
-    {
-        timeLabel.setText(time);
-    }
     
     public DefaultListModel<String> getHeadlines()
     {
@@ -166,6 +167,7 @@ public class NFWindow extends JFrame
     {
         headlines.removeElement(headline);
     }
+
     
     public DefaultListModel<String> getDownloads()
     {
@@ -179,12 +181,12 @@ public class NFWindow extends JFrame
     {
         downloads.removeElement(download);
     }
+
     
     public void showError(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
-    
     public void showInformation(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.INFORMATION_MESSAGE);

@@ -14,11 +14,19 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import newsfeed.controller.NFEventLogger;
 import newsfeed.controller.NFWindowController;
+
 /**
  * @author Benjamin Nicholas Palmer
  * Student 17743075 - Curtin University
- * Implementable Plugin class required to be extended for plug-in support.
+ * Implementable Plugin class required to be extended for plug-in support, represents and Plugin model.
+ * Has functionality to build a Plugin from JAR and refresh plugin headlines.
+ * To build a plugin:
+ * 1 - import import newsfeed.model.Plugin;
+ * 2 - extend Plugin
+ * 3 - initialise 'source' and 'refreshInterval'
+ * 4 - implement refreshHeadlines.
  */
 
 public abstract class Plugin
@@ -29,15 +37,11 @@ public abstract class Plugin
     // Values initialised in the plugin constructor:
     protected String source;
     protected int refreshInterval;
-    protected final List<Headline> currentHeadlines;
+    protected final List<Headline> currentHeadlines = Collections.synchronizedList(new ArrayList<>());
 
     // Template method required to be implemented in the plugin
-    abstract protected ArrayList<Headline> parseHeadlines(String pageText);   // Method to parse the page HTML
-    
-    public Plugin()
-    {
-        currentHeadlines = Collections.synchronizedList(new ArrayList<>());
-    }
+    // This method to parse the page HTML and retrieve the list of headlines.
+    abstract protected ArrayList<Headline> parseHeadlines(String pageText);
     
     public String getSource()
     {
@@ -97,19 +101,19 @@ public abstract class Plugin
                     currentHeadlines.addAll(parseHeadlines(pageText));
                 }
                 
-                NFWindowController.logInfo("Downloaded headlines from source: " + source);
+                NFEventLogger.logInfo("Downloaded headlines from source: " + source);
             }
             catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
-                NFWindowController.logInfo("Download of page cancelled: " + getSource());
+                NFEventLogger.logInfo("Download of page cancelled: " + getSource());
             }
             catch(IOException e) {  // An error
-                NFWindowController.logException("Error: Error downloading URL: " + getSource(), e);
+                NFEventLogger.logException("Error: Error downloading URL: " + getSource(), e);
                 windowController.getWindow().showError("Error: Error downloading URL: "+e.getMessage());
             }
         }
         catch(MalformedURLException e)  // Plugin has incorrect URL
         {
-            NFWindowController.logException("Error: Specified plugin URL of incorrect format.", e);
+            NFEventLogger.logException("Error: Specified plugin URL of incorrect format.", e);
             windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
         }
         return currentHeadlines;
@@ -128,25 +132,21 @@ public abstract class Plugin
             if(pluginName.endsWith(".jar"))
             {
                 JarFile jarFile = new JarFile(pluginName);
-                if(jarFile != null)
+                Enumeration jarComponents = jarFile.entries();
+                while (jarComponents.hasMoreElements())
                 {
-                    Enumeration jarComponents = jarFile.entries();
-
-                    while (jarComponents.hasMoreElements())
+                    JarEntry entry = (JarEntry) jarComponents.nextElement();
+                    if(entry.getName().endsWith(".class"))
                     {
-                        JarEntry entry = (JarEntry) jarComponents.nextElement();
-                        if(entry.getName().endsWith(".class"))
-                        {
-                            className = entry.getName();
-                        }
+                        className = entry.getName();
                     }
-                    // Set file directory URL containing the .jar
-                    File file = new File(System.getProperty("user.dir")+"/"+pluginName);
-                    URLClassLoader loader = new URLClassLoader(new URL[]{file.toURI().toURL()});
-                    // Initialise the class.
-                    Class newClass = Class.forName(className.replace(".class", ""), true, loader);
-                    newPlugin = (Plugin) newClass.newInstance();
                 }
+                // Set file directory URL containing the .jar
+                File file = new File(System.getProperty("user.dir")+"/"+pluginName);
+                URLClassLoader loader = new URLClassLoader(new URL[]{file.toURI().toURL()});
+                // Initialise the class.
+                Class newClass = Class.forName(className.replace(".class", ""), true, loader);
+                newPlugin = (Plugin) newClass.newInstance();
             }
             else
             {
@@ -159,18 +159,17 @@ public abstract class Plugin
         }
         catch (ClassNotFoundException | IOException e)
         {
-            NFWindowController.logException("Error: Plugin class not found. Class name: " + className, e);
+            NFEventLogger.logException("Error: Plugin class not found. Class name: " + className, e);
         }
         catch(InstantiationException | IllegalAccessException e)
         {
-            NFWindowController.logException("Error: Cannot instantiate plugin class. Class name: " + className, e);
+            NFEventLogger.logException("Error: Cannot instantiate plugin class. Class name: " + className, e);
         }
         catch(ClassCastException e)
         {
-            NFWindowController.logException("Error: Specified Plugin of incorrect format. Cannot be loaded. Class name: " + className, e);
+            NFEventLogger.logException("Error: Specified Plugin of incorrect format. Cannot be loaded. Class name: " + className, e);
         }
-        
-        if(newPlugin != null)
+        if(newPlugin != null)   // Checks to set null on error conditions to be picked up by the calling function.
         {
             if(newPlugin.getSource() == null)
             {

@@ -2,7 +2,9 @@ package newsfeed.controller;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -17,16 +19,16 @@ import newsfeed.model.Plugin;
  */
 public class NFPluginScheduler extends ScheduledThreadPoolExecutor
 {
-    private ScheduledThreadPoolExecutor pluginScheduler;
+    private final ScheduledThreadPoolExecutor pluginScheduler;
     private final List<ScheduledFuture<Plugin>> currentlyRunningPlugins;
-    private final List<Plugin> allPlugins;
-    private NFWindowController controller;
+    private final Map<ScheduledFuture<Plugin>, Runnable> runnableLookup;
+    private final NFWindowController controller;
     
     public NFPluginScheduler(NFWindowController controller)
     {
         super(10);  // init parent as executor.
         currentlyRunningPlugins = Collections.synchronizedList(new ArrayList<>());   // To make sure the currently running list is not corrupted when update or cancel is selected.
-        allPlugins = Collections.synchronizedList(new ArrayList<>());
+        runnableLookup = Collections.synchronizedMap(new HashMap<>());  // Used so that the update all functionality works properly.
         pluginScheduler = this;  // Maximum of 10 threads.
         pluginScheduler.setRemoveOnCancelPolicy(true);
         this.controller = controller;
@@ -35,7 +37,6 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
     @SuppressWarnings("unchecked")
     public void addPlugin(Plugin newPlugin)
     {
-        allPlugins.add(newPlugin);
         try
         {
             Runnable pluginRefresh = () -> // lambda expression to make a new runnable thread, to run the specific plugin's refresh code
@@ -48,7 +49,6 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
                 }
                 controller.deleteDownload(newPlugin.getSource());
             };  // End of plugin refresh thread.
-            
             afterExecute(pluginRefresh, null);  // To remove from the currently executing queue after refreshing the plugin information.
             
             // Make sure that tasks are executed in the correctly:
@@ -57,13 +57,14 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
                 ScheduledFuture newFuture = pluginScheduler.scheduleAtFixedRate(pluginRefresh, 0, newPlugin.getRefreshInterval(), TimeUnit.SECONDS);
                 synchronized(currentlyRunningPlugins)
                 {
+                    runnableLookup.put(newFuture, pluginRefresh);
                     currentlyRunningPlugins.add(newFuture);
                 }
             }
         }
         catch(RejectedExecutionException e)
         {
-            NFWindowController.logException("Error: Cannot start thread for plugin: " + newPlugin.getSource(), e);
+            NFEventLogger.logException("Error: Cannot start thread for plugin: " + newPlugin.getSource(), e);
         }
     }
 
@@ -88,9 +89,10 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
                 for(Runnable task : pluginScheduler.getQueue())
                 {
                     ScheduledFuture<Plugin> result = (ScheduledFuture<Plugin>)task;
+                    
                     if(!currentlyRunningPlugins.contains(result))
                     {
-                        ScheduledFuture newFuture = pluginScheduler.schedule(task, 0, TimeUnit.SECONDS);
+                        ScheduledFuture newFuture = pluginScheduler.schedule(runnableLookup.get(result), 0, TimeUnit.SECONDS);
                         currentlyRunningPlugins.add(newFuture);
                     }
                 }

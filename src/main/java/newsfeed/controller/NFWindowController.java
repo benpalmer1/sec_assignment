@@ -1,7 +1,6 @@
 package newsfeed.controller;
 
 import java.awt.event.ActionEvent;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -12,15 +11,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.FileHandler;
-import java.util.logging.Handler;
-import java.util.logging.Level;
 import javax.swing.Timer;
-import java.util.logging.Logger;
 
 import newsfeed.view.*;
 import newsfeed.model.*;
 
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Controller class for the window of the application.
+ * Abstracts the handling of managing various problems such as updating the lists,
+ * initialising plugins and controlling events to be actions on the window itself.
+ * Contains 
+ */
 public class NFWindowController
 {
     // Reference to the window
@@ -98,7 +101,7 @@ public class NFWindowController
                 {
                     pluginList.add(newPlugin);
                     pluginScheduler.addPlugin(newPlugin);
-                    logInfo("Add new plugin: " + newPlugin.getSource());
+                    NFEventLogger.logInfo("Add new plugin: " + newPlugin.getSource());
                 }
                 else
                 {
@@ -115,7 +118,7 @@ public class NFWindowController
                     {
                         pluginList.add(newPlugin);
                         pluginScheduler.addPlugin(newPlugin);
-                        logInfo("Add new plugin: " + newPlugin.getSource());
+                        NFEventLogger.logInfo("Add new plugin: " + newPlugin.getSource());
                     }
                     else
                     {
@@ -127,50 +130,10 @@ public class NFWindowController
         initPlugins.run();
     }
     
-    public synchronized static void logException(String logString, Exception e)
-    {
-        Runnable logTask = () -> { 
-            try
-            {
-                Handler handler = new FileHandler("error.log", true);
-                Logger logger = Logger.getLogger("newsfeed.exception");
-                logger.setLevel(Level.ALL);
-                logger.addHandler(handler);
-                logger.log(Level.SEVERE, logString, e);
-                handler.close();
-            }
-            catch (IOException ex)
-            {
-                System.err.println("Error: Unable to log exception message. Message: " + logString);
-            }
-        };
-        new Thread(logTask).start();
-    }
-    
-    public synchronized static void logInfo(String logString)
-    {
-        Runnable logTask = () -> { 
-            try
-            {
-                Handler handler = new FileHandler("info.log", true);
-                Logger logger = Logger.getLogger("newsfeed.info");
-                logger.setLevel(Level.ALL);
-                logger.addHandler(handler);
-                logger.log(Level.INFO, logString);
-                handler.close();
-            }
-            catch (IOException e)
-            {
-                System.err.println("Error: Unable to log info message. Message: " + logString);
-            }
-        };
-        new Thread(logTask).start();
-    }
-    
     /** Method to update the headlines for a specific source.
-    * Method is called by the newsfeed plugin to update the current headlines of the specific site.
+    * Method is called by the respective plugin to update the current headlines of the specific site.
     * Queues the update to the updateQueue for updating when the updateExector is available. 
-    * Prevents articles of the same name being listed also as some sites may contain duplicate headings. i.e previews.
+    * Prevents articles of the same name being listed also, as some sites may contain duplicate headings. i.e previews, ads, menus.
     **/
     public void updateHeadlines(List<Headline> updatedHeadlines)
     {
@@ -226,7 +189,7 @@ public class NFWindowController
             }
             catch(InterruptedException e)
             {
-                logException("Error: GUI headline update action interrupted.", e);
+                NFEventLogger.logException("Error: GUI headline update action interrupted.", e);
                 window.showError("Error: GUI headline update action interrupted.");
             }
         });
@@ -248,7 +211,7 @@ public class NFWindowController
                 window.addDownload(toAdd);
             } catch (InterruptedException e)
             {
-                logException("Error: Add download to GUI action interrupted.", e);
+                NFEventLogger.logException("Error: Add download to GUI action interrupted.", e);
                 window.showError("Error: Add download to GUI action interrupted.");
             }
         });
@@ -278,7 +241,7 @@ public class NFWindowController
     public void update()
     {
         pluginScheduler.updateAllNow();
-        logInfo("Updated all active plugins.");
+        NFEventLogger.logInfo("Updated all active plugins.");
     }
     
     public void cancelAllRunning()
