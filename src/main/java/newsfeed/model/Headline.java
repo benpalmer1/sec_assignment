@@ -1,25 +1,27 @@
 package newsfeed.model;
 
 /**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
  * Model class to represent a headline for output to the user.
  */
 
 public class Headline
 {
-    private String source;
+    private String sourceURL;
     private String headline;
     private String timestamp;
     
     public Headline(String source, String headline, String timestamp)
     {
-        this.source = source;
+        this.sourceURL = source;
         this.headline = headline;
         this.timestamp = timestamp;
     }
     
-    public String getSource()
+    public String getSourceURL()
     {
-        return source;
+        return sourceURL;
     }
     
     public String getHeadline()
@@ -32,9 +34,9 @@ public class Headline
         return timestamp;
     }
     
-    public void setSource(String source)
+    public void setSourceURL(String sourceURL)
     {
-        this.source = source;
+        this.sourceURL = sourceURL;
     }
     
     public void setHeadline(String headline)
@@ -47,8 +49,12 @@ public class Headline
         this.timestamp = timestamp;
     }
     
+    // Formats the output string in an easily read format: 'source: headline (time)'
+    @Override
     public String toString()
     {
-        return (source + ": " + headline + "(" + timestamp + ")");
+        // Trim off the start of the source URL
+        String tempSource = sourceURL.replace("http://", "").replace("https://", "");
+        return (tempSource + ": " + headline + " (" + timestamp + ")");
     }
 }

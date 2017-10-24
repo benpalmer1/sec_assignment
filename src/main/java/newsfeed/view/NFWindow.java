@@ -8,8 +8,14 @@ import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import newsfeed.controller.*;
-import newsfeed.model.*;
 
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Window class to control the main application window in Swing.
+ * Contains various areas that are loaded into a Container and displayed to the user.
+ * Most actions are delegated to the controller to maintain class responsibility.
+ */
 public class NFWindow extends JFrame
 {
     // A list-like container used to keep track of headlines.
@@ -24,12 +30,23 @@ public class NFWindow extends JFrame
     public NFWindow(final NFWindowController controller)
     {
         super("Newsfeed");
+        this.controller = controller;
+        
         // Listener for exit by the system default window close button.
         this.addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override public void windowClosing(WindowEvent winEvt) {
+            @Override public void windowClosing(WindowEvent winEvt) {
+                try
+                {
                     controller.stop();
-                    System.exit(0);
                 }
+                catch(InterruptedException e)
+                {
+                    // Log event to report incorrect shutdown.
+                    NFEventLogger.logException("Error: Shutdown interrupted.", e);
+                    System.exit(1);
+                }
+                System.exit(0);
+            }
         });
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         
@@ -42,13 +59,10 @@ public class NFWindow extends JFrame
         updateButton.setToolTipText("Force update all news feeds now.");
         topPanel.add(updateButton);
         topPanel.add(Box.createHorizontalGlue());
-        topPanel.add(new JLabel("Time: "));
         topPanel.add(timeLabel);
         
         //TOP MIDDLE AREA
         headlines = new DefaultListModel<>();
-        headlines.addElement("test");
-        headlines.addElement("test 2");
         JPanel middlePanel = new JPanel();
         middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
         JScrollPane headlinesList = new JScrollPane(new JList<String>(headlines));
@@ -67,14 +81,11 @@ public class NFWindow extends JFrame
         icon.setImageObserver(loadingIcon);
         loadingIcon.setVisible(false);
         cancelLoadButton.setToolTipText("Cancel current loading of headlines. Scheduled updates remain unaffected.");
-        bottomMiddlePanel.add(loadingIcon);
         bottomMiddlePanel.add(cancelLoadButton);
-        
-        
+        bottomMiddlePanel.add(loadingIcon);
+         
         // BOTTOM AREA
         downloads = new DefaultListModel<>();
-        downloads.addElement("test");
-        downloads.addElement("test 2");
         JPanel bottomDlListPanel = new JPanel();
         bottomDlListPanel.setLayout(new BoxLayout(bottomDlListPanel, BoxLayout.Y_AXIS));
         JScrollPane downloadsList = new JScrollPane(new JList<String>(downloads));
@@ -102,40 +113,45 @@ public class NFWindow extends JFrame
     private void setActionListeners()
     {
         // When the "Update Now" button is pressed, update the list.
-        // TO DO
         updateButton.addActionListener(new ActionListener()
         {
             @Override public void actionPerformed(ActionEvent e)
             {
-                //controller.update();
+                controller.update();
             }
         });
         
         // When the "Cancel" button is pressed
-        // TO DO
         cancelLoadButton.addActionListener(new ActionListener()
         {   
             @Override public void actionPerformed(ActionEvent e)
             {
                 downloads.clear();
+                controller.cancelAllRunning();
             }
         });
+    }
+    
+    public String getTime()
+    {
+        return timeLabel.getText();
+    }
+    public void setTime(String time)    
+    {
+        timeLabel.setText(time);
     }
     
     public void startLoading()
     {
         loadingIcon.setVisible(true);
     }
-    
     public void stopLoading()
     {
         loadingIcon.setVisible(false);
-    }
-    
-    
-    public void setTime(String time)    
+    } 
+    public boolean isLoading()
     {
-        timeLabel.setText(time);
+        return loadingIcon.isVisible();
     }
     
     
@@ -145,35 +161,32 @@ public class NFWindow extends JFrame
     }
     public void addHeadline(String headline)
     {
-        headlines.addElement(headline);
+        headlines.add(0, headline);
     }
-    
     public void deleteHeadline(String headline)
     {
         headlines.removeElement(headline);
     }
-    
+
     
     public DefaultListModel<String> getDownloads()
     {
         return this.downloads;
     }
-    
     public void addDownload(String download)
     {
-        downloads.addElement(download);
+        downloads.add(0, download);
     }
-    
     public void deleteDownload(String download)
     {
         downloads.removeElement(download);
     }
+
     
     public void showError(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
-    
     public void showInformation(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.INFORMATION_MESSAGE);

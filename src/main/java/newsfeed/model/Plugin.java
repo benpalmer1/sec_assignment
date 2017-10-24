@@ -5,37 +5,43 @@ import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.io.IOException;
-import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import newsfeed.controller.NFEventLogger;
 import newsfeed.controller.NFWindowController;
 
 /**
  * @author Benjamin Nicholas Palmer
  * Student 17743075 - Curtin University
- * Implementable Plugin class required to be extended for plug-in support.
+ * Implementable Plugin class required to be extended for plug-in support, represents and Plugin model.
+ * Has functionality to build a Plugin from JAR and refresh plugin headlines.
+ * To build a plugin:
+ * 1 - import import newsfeed.model.Plugin;
+ * 2 - extend Plugin
+ * 3 - initialise 'source' and 'refreshInterval'
+ * 4 - implement refreshHeadlines.
  */
 
 public abstract class Plugin
 {
     //Window controller reference
-    private NFWindowController windowController;
-    private String pageText;
-    
+    protected NFWindowController windowController;
+    protected String pageText;
     // Values initialised in the plugin constructor:
     protected String source;
     protected int refreshInterval;
-    
-    private boolean downloading = false;
-    ArrayList<String> currentHeadlines;
+    protected final List<Headline> currentHeadlines = Collections.synchronizedList(new ArrayList<>());
 
     // Template method required to be implemented in the plugin
-    protected abstract ArrayList<String> parseHeadlines(String pageText);   // Method to parse the page HTML
+    // This method to parse the page HTML and retrieve the list of headlines.
+    abstract protected ArrayList<Headline> parseHeadlines(String pageText);
     
     public String getSource()
     {
@@ -47,61 +53,68 @@ public abstract class Plugin
         return this.refreshInterval;
     }
     
-    public ArrayList<String> getHeadlines()
+    public static ArrayList<String> getHeadlinesFormatted(List<Headline> toFormatHeadlines)
     {
-        return this.currentHeadlines;
-    }
-    public ArrayList<String> refreshHeadlines()
-    {
-        if(!downloading)   // Else page is currently being downloaded, do nothing
+        ArrayList<String> formattedHeadlines = new ArrayList<>();
+        for(Headline h : toFormatHeadlines)
         {
-            downloading = true;
-            try
-            {   
-                windowController.getWindow().startLoading();
-                windowController.getWindow().addDownload(getSource());
+            formattedHeadlines.add(h.toString());
+        }
 
-                URL url = new URL(getSource()); // Download source
-                try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
-                {
-                    // "try-with-resources" statement; will automatically call
-                    // chan.close() when finished.
-                    ByteBuffer buf = ByteBuffer.allocate(65536);
-                    byte[] array = buf.array();
-                    int bytesRead = chan.read(buf); // Read a chunk of data.
+        return formattedHeadlines;
+    }
+    
+    public void setWindowController(NFWindowController controller)
+    {
+        this.windowController = controller;
+    }
+    
+    public NFWindowController getWindowController()
+    {
+        return this.windowController;
+    }
+    
+    public List<Headline> refreshHeadlines()
+    {
+        try
+        {   
+            URL url = new URL(source); // Download source
+            try(ReadableByteChannel chan = Channels.newChannel(url.openStream()))
+            {
+                // "try-with-resources" statement; will automatically call
+                // chan.close() when finished.
+                ByteBuffer buf = ByteBuffer.allocate(65536);
+                byte[] array = buf.array();
+                int bytesRead = chan.read(buf); // Read a chunk of data.
 
-                    while(bytesRead != -1)
-                    {
-                        // Get data from array[0 .. bytesRead - 1] 
-                        buf.clear();
-                        bytesRead = chan.read(buf);
-                    }
-                   pageText = new String(array, StandardCharsets.UTF_8);
-                   currentHeadlines = parseHeadlines(pageText);
-                   NFWindowController.logInfo("Downloaded headlines from source: " + source);
-                }
-                catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
-                    NFWindowController.logInfo("Download of page cancelled.");
-                }
-                catch(IOException e) {  // An error
-                    NFWindowController.logException("Error: Error downloading URL.", e);
-                    windowController.getWindow().showError("Error: Error downloading URL.");
-                }
-            }
-            catch(MalformedURLException e)  // Plugin has incorrect URL
-            {
-                NFWindowController.logException("Error: Specified plugin URL of incorrect format.", e);
-                windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
-            }
-            finally
-            {
-                if(windowController != null)
+                while(bytesRead != -1)
                 {
-                    windowController.getWindow().stopLoading();
-                    windowController.getWindow().deleteDownload(getSource());
-                    downloading = false;
+                    // Get data from array[0 .. bytesRead - 1] 
+                    buf.clear();
+                    bytesRead = chan.read(buf);
                 }
+                pageText = new String(array, StandardCharsets.UTF_8);
+                
+                synchronized(currentHeadlines)
+                {
+                    currentHeadlines.clear();
+                    currentHeadlines.addAll(parseHeadlines(pageText));
+                }
+                
+                NFEventLogger.logInfo("Downloaded headlines from source: " + source);
             }
+            catch(ClosedByInterruptException e) {   // Triggered by Thread.interrupt()
+                NFEventLogger.logInfo("Download of page cancelled: " + getSource());
+            }
+            catch(IOException e) {  // An error
+                NFEventLogger.logException("Error: Error downloading URL: " + getSource(), e);
+                windowController.getWindow().showError("Error: Error downloading URL: "+e.getMessage());
+            }
+        }
+        catch(MalformedURLException e)  // Plugin has incorrect URL
+        {
+            NFEventLogger.logException("Error: Specified plugin URL of incorrect format.", e);
+            windowController.getWindow().showError("Error: Specified plugin URL of incorrect format.");
         }
         return currentHeadlines;
     }
@@ -116,37 +129,47 @@ public abstract class Plugin
         String className = "";
         try
         {
+            if(pluginName.endsWith(".jar"))
+            {
                 JarFile jarFile = new JarFile(pluginName);
-                if(jarFile != null)
+                Enumeration jarComponents = jarFile.entries();
+                while (jarComponents.hasMoreElements())
                 {
-                    Enumeration jarComponents = jarFile.entries();
-
-                    while (jarComponents.hasMoreElements())
+                    JarEntry entry = (JarEntry) jarComponents.nextElement();
+                    if(entry.getName().endsWith(".class"))
                     {
-                        JarEntry entry = (JarEntry) jarComponents.nextElement();
-                        if(entry.getName().endsWith(".class"))
-                        {
-                            className = entry.getName();
-                        }
+                        className = entry.getName();
                     }
-                    // Set file directory URL containing the .jar
-                    File file = new File(System.getProperty("user.dir")+"/"+pluginName);
-                    URLClassLoader loader = new URLClassLoader(new URL[]{file.toURI().toURL()});
-                    // Initialise the class.
-                    Class newClass = Class.forName(className.replace(".class", ""), true, loader);
-                    newPlugin = (Plugin) newClass.newInstance();
                 }
+                // Set file directory URL containing the .jar
+                File file = new File(System.getProperty("user.dir")+"/"+pluginName);
+                URLClassLoader loader = new URLClassLoader(new URL[]{file.toURI().toURL()});
+                // Initialise the class.
+                Class newClass = Class.forName(className.replace(".class", ""), true, loader);
+                newPlugin = (Plugin) newClass.newInstance();
+            }
+            else
+            {
+                throw new InstantiationException("Error: Plugin type not supported.");
+                /* -- Not supported. Doesn't work.
+                Class newClass = Class.forName(className.replace(".class", ""));
+                newPlugin = (Plugin) newClass.newInstance();
+                */
+            }   
         }
         catch (ClassNotFoundException | IOException e)
         {
-            NFWindowController.logException("Error: Plugin class not found. Class name: " + className, e);
+            NFEventLogger.logException("Error: Plugin class not found. Class name: " + className, e);
         }
-        catch(InstantiationException | IllegalAccessException | ClassCastException e)
+        catch(InstantiationException | IllegalAccessException e)
         {
-            NFWindowController.logException("Error: Cannot instantiate plugin class. Class name: " + className, e);
+            NFEventLogger.logException("Error: Cannot instantiate plugin class. Class name: " + className, e);
         }
-        
-        if(newPlugin != null)
+        catch(ClassCastException e)
+        {
+            NFEventLogger.logException("Error: Specified Plugin of incorrect format. Cannot be loaded. Class name: " + className, e);
+        }
+        if(newPlugin != null)   // Checks to set null on error conditions to be picked up by the calling function.
         {
             if(newPlugin.getSource() == null)
             {
@@ -158,10 +181,5 @@ public abstract class Plugin
             }
         }
         return newPlugin;
-    }
-    
-    public void setWindowController(NFWindowController controller)
-    {
-        this.windowController = controller;
     }
 }
