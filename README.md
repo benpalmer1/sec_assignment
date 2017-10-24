@@ -13,13 +13,15 @@ Use Gradle to compile the application:
 The build process will create a .jar file in build/libs. You can run the application as follows:
 
     $ java -jar build/libs/newsfeed.jar
-        
+    # Ensure that all plugins jars are also moved into the same directory.
+
 Source code
 -----------
 
 The source code is (according to convention) located in src/main/java/newsfeed/.
+For the developed plugins: plugin_name/src/main/java/plugin_name/
 
 Author
 ------
 
-Benjamin Palmer - Curtin University 2017
+Benjamin Palmer - 17743075 - Curtin University 2017
