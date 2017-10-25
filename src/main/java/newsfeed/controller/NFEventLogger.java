@@ -1,3 +1,9 @@
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Event logging class. Contains only static methods for logging different event types.
+ * Will produce log files of error.log and info.log when the program is running, if/when any of those events occur.
+ */
 package newsfeed.controller;
 
 import java.io.IOException;
@@ -5,12 +11,6 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-/**
- * @author Benjamin Nicholas Palmer
- * Student 17743075 - Curtin University
- * Event logging class. Contains only static methods for logging different event types.
- */
 
 public class NFEventLogger
 {

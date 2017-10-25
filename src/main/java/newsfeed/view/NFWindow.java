@@ -1,3 +1,10 @@
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Window class to control the main application window in Swing.
+ * Contains various areas that are loaded into a Container and displayed to the user.
+ * Most actions are delegated to the controller to maintain class responsibility.
+ */
 package newsfeed.view;
 
 import java.awt.*;
@@ -9,16 +16,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import newsfeed.controller.*;
 
-/**
- * @author Benjamin Nicholas Palmer
- * Student 17743075 - Curtin University
- * Window class to control the main application window in Swing.
- * Contains various areas that are loaded into a Container and displayed to the user.
- * Most actions are delegated to the controller to maintain class responsibility.
- */
 public class NFWindow extends JFrame
 {
-    // A list-like container used to keep track of headlines.
     private DefaultListModel<String> headlines;
     private DefaultListModel<String> downloads;
     private NFWindowController controller;
@@ -27,6 +26,9 @@ public class NFWindow extends JFrame
     private JLabel timeLabel;
     private JLabel loadingIcon;
     
+    /** Window constructor for the Newsfeed application.
+    ** Sets the formatting for multiple JPanels to make the general layout.
+    ** loader.gif sourced from http://www.ajaxload.info under the terms of the DWTFYWT Public License. */
     public NFWindow(final NFWindowController controller)
     {
         super("Newsfeed");
@@ -35,17 +37,7 @@ public class NFWindow extends JFrame
         // Listener for exit by the system default window close button.
         this.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(WindowEvent winEvt) {
-                try
-                {
-                    controller.stop();
-                }
-                catch(InterruptedException e)
-                {
-                    // Log event to report incorrect shutdown.
-                    NFEventLogger.logException("Error: Shutdown interrupted.", e);
-                    System.exit(1);
-                }
-                System.exit(0);
+                controller.stopNewsfeed();
             }
         });
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -65,7 +57,7 @@ public class NFWindow extends JFrame
         headlines = new DefaultListModel<>();
         JPanel middlePanel = new JPanel();
         middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
-        JScrollPane headlinesList = new JScrollPane(new JList<String>(headlines));
+        JScrollPane headlinesList = new JScrollPane(new JList<>(headlines));
         TitledBorder title = BorderFactory.createTitledBorder("Headlines");
         Border outer = BorderFactory.createCompoundBorder(title, new EmptyBorder(0, 5, 5, 5));
         middlePanel.setBorder(outer);
@@ -88,8 +80,8 @@ public class NFWindow extends JFrame
         downloads = new DefaultListModel<>();
         JPanel bottomDlListPanel = new JPanel();
         bottomDlListPanel.setLayout(new BoxLayout(bottomDlListPanel, BoxLayout.Y_AXIS));
-        JScrollPane downloadsList = new JScrollPane(new JList<String>(downloads));
-        TitledBorder dlTitle = BorderFactory.createTitledBorder("Downloads");
+        JScrollPane downloadsList = new JScrollPane(new JList<>(downloads));
+        TitledBorder dlTitle = BorderFactory.createTitledBorder("Current Downloads");
         Border dlOuter = BorderFactory.createCompoundBorder(dlTitle, new EmptyBorder(0, 5, 5, 5));
         bottomDlListPanel.setBorder(dlOuter);
         bottomDlListPanel.add(downloadsList, BorderLayout.CENTER);
@@ -100,7 +92,7 @@ public class NFWindow extends JFrame
         bottomPanel.add(bottomMiddlePanel);
         bottomPanel.add(bottomDlListPanel);
         
-        setActionListeners();        
+        setButtonActionListeners();        
         // Set layout of the window.
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
@@ -110,7 +102,8 @@ public class NFWindow extends JFrame
         pack();
     }
     
-    private void setActionListeners()
+    // Method to set action listeners for the GUI buttons.
+    private void setButtonActionListeners()
     {
         // When the "Update Now" button is pressed, update the list.
         updateButton.addActionListener(new ActionListener()
@@ -126,7 +119,10 @@ public class NFWindow extends JFrame
         {   
             @Override public void actionPerformed(ActionEvent e)
             {
-                downloads.clear();
+                synchronized(downloads)
+                {
+                    downloads.clear();
+                }
                 controller.cancelAllRunning();
             }
         });
@@ -134,55 +130,78 @@ public class NFWindow extends JFrame
     
     public String getTime()
     {
-        return timeLabel.getText();
+        synchronized(timeLabel)
+        {
+            return timeLabel.getText();
+        }
     }
     public void setTime(String time)    
     {
-        timeLabel.setText(time);
+        synchronized(timeLabel)
+        {
+            timeLabel.setText(time);
+        }
     }
     
     public void startLoading()
     {
-        loadingIcon.setVisible(true);
+        synchronized(loadingIcon)
+        {
+            loadingIcon.setVisible(true);
+        }
     }
     public void stopLoading()
     {
-        loadingIcon.setVisible(false);
+        synchronized(loadingIcon)
+        {
+            loadingIcon.setVisible(false);
+        }
     } 
     public boolean isLoading()
     {
-        return loadingIcon.isVisible();
+        synchronized(loadingIcon)
+        {
+            return loadingIcon.isVisible();
+        }
     }
-    
-    
-    public DefaultListModel<String> getHeadlines()
-    {
-        return this.headlines;
-    }
+
     public void addHeadline(String headline)
     {
-        headlines.add(0, headline);
+        synchronized(headlines)
+        {
+            headlines.add(0, headline);
+        }
     }
     public void deleteHeadline(String headline)
     {
-        headlines.removeElement(headline);
+        synchronized(headlines)
+        {
+            headlines.removeElement(headline);
+        }
     }
 
-    
-    public DefaultListModel<String> getDownloads()
+    public int downloadsCount()
     {
-        return this.downloads;
-    }
+        synchronized(downloads){
+            return downloads.getSize();
+        }
+    }    
     public void addDownload(String download)
     {
-        downloads.add(0, download);
+        synchronized(downloads)
+        {
+            downloads.add(0, download);
+        }
     }
     public void deleteDownload(String download)
     {
-        downloads.removeElement(download);
+        synchronized(downloads)
+        {
+            downloads.removeElement(download);
+        }
     }
-
     
+    // Methods to show error and information dialogs to the user.
     public void showError(String message)
     {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);

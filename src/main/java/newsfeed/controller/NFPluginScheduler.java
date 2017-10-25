@@ -1,3 +1,11 @@
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Newsfeed Plugin Scheduler - Manages scheduling of plugins in the newsfeed.
+ * Uses a scheduled thread pool of size 10 in order to run the plugins.
+ * Contains methods to add a new plugin to the thread pool, cancel running plugins and update all plugins immediately.
+ */
+
 package newsfeed.controller;
 
 import java.util.ArrayList;
@@ -12,11 +20,6 @@ import java.util.concurrent.TimeUnit;
 import newsfeed.model.Headline;
 import newsfeed.model.Plugin;
 
-/**
- * @author Benjamin Nicholas Palmer
- * Student 17743075 - Curtin University
- * Newsfeed Plugin Scheduler - Manages scheduling of plugins in the newsfeed.
- */
 public class NFPluginScheduler extends ScheduledThreadPoolExecutor
 {
     private final ScheduledThreadPoolExecutor pluginScheduler;
@@ -28,13 +31,13 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
     {
         super(10);  // init parent as executor.
         currentlyRunningPlugins = Collections.synchronizedList(new ArrayList<>());   // To make sure the currently running list is not corrupted when update or cancel is selected.
-        runnableLookup = Collections.synchronizedMap(new HashMap<>());  // Used so that the update all functionality works properly.
+        runnableLookup = Collections.synchronizedMap(new HashMap<>());  // Used so that the 'update all' functionality works properly.
         pluginScheduler = this;  // Maximum of 10 threads.
-        pluginScheduler.setRemoveOnCancelPolicy(true);
         this.controller = controller;
     }
     
-    @SuppressWarnings("unchecked")
+    
+    //AddPlugin method - Adds a newly instantiated Plugin class to the pluginScheduler queue.
     public void addPlugin(Plugin newPlugin)
     {
         try
@@ -51,7 +54,6 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
             };  // End of plugin refresh thread.
             afterExecute(pluginRefresh, null);  // To remove from the currently executing queue after refreshing the plugin information.
             
-            // Make sure that tasks are executed in the correctly:
             synchronized(pluginScheduler)
             {
                 ScheduledFuture newFuture = pluginScheduler.scheduleAtFixedRate(pluginRefresh, 0, newPlugin.getRefreshInterval(), TimeUnit.SECONDS);
@@ -68,6 +70,7 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
         }
     }
 
+    // CancelAllRunningl method - cancels all running plugins by calling ScheduledFuture.cancel on each future object.
     public void cancelAllRunning()
     {
         synchronized(currentlyRunningPlugins)
@@ -80,7 +83,9 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
         }
     }
     
-    public void updateAllNow()
+    // UpdateAllNow method - Loops through the list of plugins in the plugin scheduler
+    // and schedules each plugin to run immediately if it is not already running.
+    public synchronized void updateAllNow()
     {
         synchronized(pluginScheduler)   // To stop a plugin being added whilst updating
         {
@@ -90,7 +95,7 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
                 {
                     ScheduledFuture<Plugin> result = (ScheduledFuture<Plugin>)task;
                     
-                    if(!currentlyRunningPlugins.contains(result))
+                    if(!currentlyRunningPlugins.contains(result))   // Check if the plugin is already running
                     {
                         ScheduledFuture newFuture = pluginScheduler.schedule(runnableLookup.get(result), 0, TimeUnit.SECONDS);
                         currentlyRunningPlugins.add(newFuture);
@@ -100,6 +105,7 @@ public class NFPluginScheduler extends ScheduledThreadPoolExecutor
         }
     }
     
+    // StopAll method - Used by the window controller class to immediately hault execution of all plugins.
     public void stopAll() throws InterruptedException
     {
         pluginScheduler.shutdownNow();
