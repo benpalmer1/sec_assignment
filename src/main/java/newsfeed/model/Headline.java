@@ -49,6 +49,12 @@ public class Headline
         this.timestamp = timestamp;
     }
     
+    @Override
+    public boolean equals(Object obj)
+    {
+        return ((Headline)obj).getHeadline().equals(headline) && ((Headline)obj).getSourceURL().equals(sourceURL);
+    }
+    
     // Formats the output string in an easily read format: 'source: headline (time)'
     @Override
     public String toString()

@@ -1,8 +1,16 @@
+// Main build file for SEC Assignment / Newsfeed gradle project.
+// Curtin University - Benjamin Palmer - 17743075
+
 allprojects {
     apply plugin: 'java'
     
     repositories {
         mavenCentral()
+    }
+    
+    //String utility to unescape html text.
+    dependencies {
+        compile group: 'org.apache.commons', name: 'commons-text', version: '1.1'
     }
 }
 
@@ -14,4 +22,17 @@ jar {
     manifest {
         attributes 'Main-Class': 'newsfeed.controller.NewsFeed'
     }
+    
+	// Make sure the compiled jar is portable
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree (it)
+        }
+    }
+}
+
+// Build task to copy all plugin/subproject jars into the build/libs directory
+task moveJars(type: Copy) {
+    from(subprojects.jar)
+    into project.file('build/libs')
 }

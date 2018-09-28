@@ -1,3 +1,10 @@
+/**
+ * @author Benjamin Nicholas Palmer
+ * Student 17743075 - Curtin University
+ * Controller class for the window of the application.
+ * Abstracts the handling of managing various problems such as updating the lists,
+ * initialising plugins and controlling events to be actioned on the window itself.
+ */
 package newsfeed.controller;
 
 import java.awt.event.ActionEvent;
@@ -10,20 +17,12 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import newsfeed.view.*;
 import newsfeed.model.*;
 
-/**
- * @author Benjamin Nicholas Palmer
- * Student 17743075 - Curtin University
- * Controller class for the window of the application.
- * Abstracts the handling of managing various problems such as updating the lists,
- * initialising plugins and controlling events to be actions on the window itself.
- * Contains 
- */
 public class NFWindowController
 {
     // Reference to the window
@@ -34,20 +33,10 @@ public class NFWindowController
     private NFPluginScheduler pluginScheduler;
     
     private final List<Headline> currentHeadlines;
-    private final LinkedBlockingQueue<List<Headline>> headlineUpdateQueue;
-    private final ExecutorService headlineUpdateExecutor;
-    
-    private final LinkedBlockingQueue<String> downloadAddQueue;
-    private final ExecutorService downloadUpdateExecutor;
     
     public NFWindowController()
     {
         currentHeadlines = Collections.synchronizedList(new ArrayList<>());
-        headlineUpdateExecutor = Executors.newSingleThreadExecutor();
-        headlineUpdateQueue = new LinkedBlockingQueue<>();
-        
-        downloadUpdateExecutor = Executors.newSingleThreadExecutor();
-        downloadAddQueue = new LinkedBlockingQueue<>();
     }
     
     public void setWindow(NFWindow window)
@@ -60,8 +49,9 @@ public class NFWindowController
         this.pluginScheduler = pluginScheduler;
     }
     
-    /* Using another thread to set the time every minute so
-    * that execution of the rest of the software is unaffectved by the clock. */
+    /** Method StartTimerThread - Initialises the timer text field on the window.
+    ** Uses another thread to set the time every second, so
+    ** that execution of the rest of the software is unaffected by the clock. */
     public void startTimerThread()
     {
         final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mma");
@@ -76,53 +66,59 @@ public class NFWindowController
         });
         
         timeTimer.start();
-    }   
+    }
+    
+    /** Static method getTime.
+     * returns the current time as a formatted string. */
+    public static String getTime()
+    {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mma");
+        Calendar initial = Calendar.getInstance();
+        return dateFormat.format(initial.getTime());
+    }
     
     public NFWindow getWindow()
     {
         return this.window;
     }
     
+    
+    /** InitPlugins method - Creates a new thread to initialise all plugins.
+    * New thread used to remove unrelated task from the GUI thread.
+    */
     public void initPlugins(String[] plugins)
     {
         Runnable initPlugins = () ->
         {
-            if(plugins.length == 0)
+            if(plugins.length == 0) // User didn't specify any command line arguments.
             {
-               // window.showError("No plugins specified. Specify one or more newsfeed plugins in initial command line arguments.");
-               // stop();
-               // System.exit(0);
-                
-                // Test code:
-                pluginList = new ArrayList<>();
-                Plugin newPlugin = Plugin.loadClassFromJarFile("test_subproject.jar");
-                newPlugin.setWindowController(this);
-                if(newPlugin != null)
-                {
-                    pluginList.add(newPlugin);
-                    pluginScheduler.addPlugin(newPlugin);
-                    NFEventLogger.logInfo("Add new plugin: " + newPlugin.getSource());
-                }
-                else
-                {
-                    window.showError("Error: Cannot instantiate plugin class.");
-                }
+                window.showError("No plugins specified. Specify one or more newsfeed plugins in initial command line arguments.");
+                stopNewsfeed();
+                System.exit(0);
             }
             else    // Normal execution
             {
                 pluginList = new ArrayList<>();
                 for(String plugin : plugins)
                 {
-                    Plugin newPlugin = Plugin.loadClassFromJarFile(plugin);
-                    if(newPlugin != null)
+                    if(plugin.endsWith(".jar"))
                     {
-                        pluginList.add(newPlugin);
-                        pluginScheduler.addPlugin(newPlugin);
-                        NFEventLogger.logInfo("Add new plugin: " + newPlugin.getSource());
+                        Plugin newPlugin = Plugin.loadClassFromJarFile(plugin);
+                        if(newPlugin != null)
+                        {
+                            pluginList.add(newPlugin);
+                            pluginScheduler.addPlugin(newPlugin);
+                            NFEventLogger.logInfo("Add new plugin: " + newPlugin.getSource());
+                        }
+                        else
+                        {
+                            window.showError("Error: Cannot instantiate plugin class.");
+                        }
                     }
                     else
                     {
-                        window.showError("Error: Cannot instantiate plugin class.");
+                        window.showError("Error: Non-jar file specified.");
+                        NFEventLogger.logInfo("Error: Non-jar file specified.");
                     }
                 }
             }
@@ -130,112 +126,108 @@ public class NFWindowController
         initPlugins.run();
     }
     
-    /** Method to update the headlines for a specific source.
+    /** UpdateHeadlines method - Updates the headlines for a specific source.
     * Method is called by the respective plugin to update the current headlines of the specific site.
-    * Queues the update to the updateQueue for updating when the updateExector is available. 
     * Prevents articles of the same name being listed also, as some sites may contain duplicate headings. i.e previews, ads, menus.
     **/
-    public void updateHeadlines(List<Headline> updatedHeadlines)
+    public synchronized void updateHeadlines(List<Headline> updatedHeadlines)
     {
-        headlineUpdateQueue.add(updatedHeadlines);
-        headlineUpdateExecutor.execute(() ->
+        Runnable headlineUpdate = () ->
         {
-            try
+            synchronized(currentHeadlines)
             {
-                synchronized(currentHeadlines)
-                {
-                    List<Headline> hUpdate = headlineUpdateQueue.take();
-                    // Two checks to update the main list of headlines.
-                    // 1 - Has the headline already been downloaded? If not, add to the list of headlines.
-                    // 2 - Has a headline been deleted from the list of headlines? If so, delete the headline.
-                    boolean alreadyDownloaded = false;
-                    boolean wasRemoved = true;
-                    
-                    ArrayList<Headline> headlinesToRemove = new ArrayList<>();
-                    ArrayList<Headline> headlinesToAdd = new ArrayList<>();
+                // Two checks to update the main list of headlines.
+                // 1 - Has the headline already been downloaded? If not, add to the list of headlines.
+                // 2 - Has a headline been deleted from the list of headlines? If so, delete the headline.
+                boolean alreadyDownloaded = false;
+                boolean wasRemoved = true;
 
-                    for(Headline newHeadline : updatedHeadlines)
+                ArrayList<Headline> headlinesToRemove = new ArrayList<>();
+                ArrayList<Headline> headlinesToAdd = new ArrayList<>();
+
+                for(Headline newHeadline : updatedHeadlines)
+                {
+                    alreadyDownloaded = false;
+                    for(Headline currentHeadline : currentHeadlines)
                     {
-                        alreadyDownloaded = false;
-                        for(Headline currentHeadline : currentHeadlines)
+                        wasRemoved = true;
+                        if((newHeadline.getSourceURL().equals(currentHeadline.getSourceURL())) && (newHeadline.getHeadline().equals(currentHeadline.getHeadline())))
+                        {   // Check if the headline was already downloaded.
+                            alreadyDownloaded = true;
+                        }
+                        for(Headline newHeadlineB : updatedHeadlines) // Check if the headline was removed.
                         {
-                            wasRemoved = true;
-                            if((newHeadline.getSourceURL().equals(currentHeadline.getSourceURL())) && (newHeadline.getHeadline().equals(currentHeadline.getHeadline())))
-                            {   // Check if the headline was already downloaded.
-                                alreadyDownloaded = true;
-                            }
-                            for(Headline newHeadlineB : updatedHeadlines) // Check if the headline was removed.
+                            if(newHeadlineB.getSourceURL().equals(currentHeadline.getSourceURL()) && newHeadlineB.getHeadline().equals(currentHeadline.getHeadline()))
                             {
-                                if(newHeadlineB.getSourceURL().equals(currentHeadline.getSourceURL()) && newHeadlineB.getHeadline().equals(currentHeadline.getHeadline()))
-                                {
-                                    wasRemoved = false;
-                                }
-                            }
-                            if(wasRemoved)
-                            {
-                                window.deleteHeadline(currentHeadline.toString());
-                                headlinesToRemove.add(currentHeadline);
+                                wasRemoved = false;
                             }
                         }
-                        if(!alreadyDownloaded)
+                        if(currentHeadline.getSourceURL().equals(updatedHeadlines.get(0).getSourceURL()) && wasRemoved)
                         {
-                            window.addHeadline(newHeadline.toString());
-                            headlinesToAdd.add(newHeadline);
+                            window.deleteHeadline(currentHeadline.toString());
+                            headlinesToRemove.add(currentHeadline);
                         }
                     }
-                    currentHeadlines.removeAll(headlinesToRemove);
-                    currentHeadlines.addAll(headlinesToAdd);
+                    if(!alreadyDownloaded)
+                    {
+                        window.addHeadline(newHeadline.toString());
+                        headlinesToAdd.add(newHeadline);
+                    }
                 }
+                currentHeadlines.removeAll(headlinesToRemove);
+                currentHeadlines.addAll(headlinesToAdd);
             }
-            catch(InterruptedException e)
-            {
-                NFEventLogger.logException("Error: GUI headline update action interrupted.", e);
-                window.showError("Error: GUI headline update action interrupted.");
-            }
-        });
-    }
-    
-    public void addDownload(String source) 
-    {
-        downloadAddQueue.add(source);
+        };
         
-        downloadUpdateExecutor.execute(() ->
-        {
-            try
-            {
-                if(!window.isLoading())
-                {
-                    window.startLoading();
-                }
-                String toAdd = downloadAddQueue.take();
-                window.addDownload(toAdd);
-            } catch (InterruptedException e)
-            {
-                NFEventLogger.logException("Error: Add download to GUI action interrupted.", e);
-                window.showError("Error: Add download to GUI action interrupted.");
-            }
-        });
+        SwingUtilities.invokeLater(headlineUpdate);
     }
     
+    /** Add/Delete download methods.
+     * Controller methods to modify the downloads list on the GUI. The tasks are 
+     * added to the invokeLater events queue to make sure the list is updated without corruption.*/
+    public void addDownload(String source) 
+    {        
+        Runnable addDownload = () ->
+        {
+            window.startLoading();
+            window.addDownload(source);
+        };
+        
+        SwingUtilities.invokeLater(addDownload);
+    }
     public void deleteDownload(String source)
     {
-        downloadUpdateExecutor.execute(() ->
+        Runnable delDownload = () ->
         {
-            if(downloadAddQueue.size() == 0 && window.isLoading())
+            window.deleteDownload(source);
+            if(window.downloadsCount() == 0)
             {
                 window.stopLoading();
             }
-            window.deleteDownload(source);
-        });
+        };
+        
+        SwingUtilities.invokeLater(delDownload);
     }
     
-    public void stop() throws InterruptedException
+    /** Main stop method for the entire application.
+     * Calls the various required methods to stop execution of each
+     * running part of the software. */
+    public void stopNewsfeed()
     {
-        headlineUpdateExecutor.shutdown();
-        headlineUpdateExecutor.awaitTermination(5, TimeUnit.SECONDS);
-        pluginScheduler.stopAll();
-        timeTimer.stop();
-        window.setVisible(false);
+        try
+        {
+            pluginScheduler.stopAll();
+        } catch (InterruptedException e)
+        {
+            NFEventLogger.logException("Error: ShutdownInterrupted.", e);
+        }
+        finally
+        {
+            NFEventLogger.logInfo("Newsfeed application terminated.");
+            timeTimer.stop();
+            window.setVisible(false);
+            System.exit(0);
+        }
     }
 
     public void update()

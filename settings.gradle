@@ -1,1 +1,4 @@
-include 'test_subproject'
+// Settings file for main gradle project.
+// Curtin University - Benjamin Palmer - 17743075
+
+include 'bbcnews', 'nytimes', 'arstechnica'
