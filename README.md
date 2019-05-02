@@ -34,3 +34,5 @@ Author
 ------
 
 Benjamin Palmer - 17743075 - Curtin University 2017
+
+Repository made public in 2019.
